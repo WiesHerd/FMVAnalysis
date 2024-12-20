@@ -1,16 +1,12 @@
 {
   "version": 2,
-  "public": true,
-  "builds": [
+  "buildCommand": "npm install && chmod +x ./node_modules/.bin/tsc && npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
   ]
 } 
