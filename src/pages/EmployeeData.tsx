@@ -224,10 +224,10 @@ const EmployeeDataPage: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-4">
+      <div className="px-6 pt-2 pb-6">
+        <div className="flex justify-between items-center mb-2">
           <h1 className="text-2xl font-semibold">Employee Data Management</h1>
-          <div className="flex gap-2">
+          <div className="flex">
             <Button
               type="primary"
               icon={<UploadOutlined />}
@@ -251,7 +251,7 @@ const EmployeeDataPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-4">
+        <div>
           <Upload.Dragger
             accept=".csv"
             beforeUpload={handleFileUpload}
@@ -262,19 +262,19 @@ const EmployeeDataPage: React.FC = () => {
           </Upload.Dragger>
         </div>
 
-        <div className="mb-4">
-          <h2 className="text-lg font-medium mb-2">Data Preview</h2>
-          {employeeData.length > 0 && (
-            <div className="flex justify-end mb-2">
+        <div className="data-preview-section">
+          <div className="data-preview-header">
+            <div>Data Preview</div>
+            {employeeData.length > 0 && (
               <Input.Search
                 placeholder="Search employees..."
                 allowClear
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
-                style={{ width: 200 }}
+                className="search-input"
               />
-            </div>
-          )}
+            )}
+          </div>
           <EmployeeDataTable data={employeeData} searchText={searchText} />
         </div>
       </div>
