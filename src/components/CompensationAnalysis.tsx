@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useContext, useCallback, useEffect } from 'react';
 import { Card } from 'antd';
+import Modal from './Modal';
+import TrashIcon from './TrashIcon';
 
 // Helper functions
 const calculateMonthsSinceReview = (reviewDate: Date | null): number => {
@@ -150,11 +152,11 @@ interface CompensationComponents {
 
 interface RiskFactor {
   category: string;
-  score: 0 | 1 | 2 | 3;
-  riskLevel: 'low' | 'medium' | 'high';
   description: string;
+  score: 0 | 1 | 2 | 3;
   findings: string[];
   recommendations: string[];
+  riskLevel: 'low' | 'medium' | 'high';
 }
 
 interface RiskAnalysis {
@@ -240,8 +242,8 @@ interface RiskFactorContext {
   provider: {
     yearsExperience: number;
     specialCertifications: string[];
-    academicAppointment?: string;
     uniqueSkills: string[];
+    academicAppointment?: string;
     specialty?: string;
     name?: string;
   };
@@ -249,12 +251,7 @@ interface RiskFactorContext {
     caseComplexity: 'low' | 'medium' | 'high';
     qualityMetrics: {
       type: 'objective' | 'subjective' | 'mixed';
-      metrics: Array<{
-        name: string;
-        target: number;
-        actual: number;
-        weight: number;
-      }>;
+      metrics: { name: string; target: number; actual: number; weight: number; }[];
       score: number;
       benchmark: number;
     };
@@ -268,10 +265,10 @@ interface RiskFactorContext {
     };
   };
   program: {
-    leadershipRole?: string;
     researchActive: boolean;
     teachingResponsibilities: boolean;
     strategicImportance: 'low' | 'medium' | 'high';
+    leadershipRole?: string;
   };
   compensation: {
     total: number;
@@ -285,16 +282,16 @@ interface RiskFactorContext {
     };
   };
   documentation: {
+    lastReviewDate: string;
     methodology: string;
     supportingDocs: string[];
-    lastReviewDate: string;
   };
   compliance: {
     starkCompliance: boolean;
     aksPolicies: boolean;
     referralAnalysis: {
       hasReferralConnection: boolean;
-      referralImpact: 'none' | 'indirect' | 'direct';
+      referralImpact: 'none' | 'low' | 'medium' | 'high';
     };
   };
   businessCase: {
@@ -1910,19 +1907,13 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
 };
 
 // Add RiskFactorEditor component
-const RiskFactorEditor: React.FC<{
-  factor: RiskFactor;
-  context: RiskFactorContext;
-  onUpdate: (updatedContext: RiskFactorContext, score: number, findings: string[], recommendations: string[]) => void;
-  onClose: () => void;
-}> = ({ factor, context, onUpdate, onClose }) => {
-  const [editedContext, setEditedContext] = useState<RiskFactorContext>(context);
+const RiskFactorEditor: React.FC<RiskFactorEditorProps> = ({ factor, context, onUpdate, onClose }) => {
+  const [selectedScore, setSelectedScore] = useState<0 | 1 | 2 | 3>(factor.score);
   const [editedFindings, setEditedFindings] = useState<string[]>(factor.findings);
   const [editedRecommendations, setEditedRecommendations] = useState<string[]>(factor.recommendations);
-  const [selectedScore, setSelectedScore] = useState<number>(factor.score);
 
   const handleSave = () => {
-    onUpdate(editedContext, selectedScore, editedFindings, editedRecommendations);
+    onUpdate(context, selectedScore, editedFindings, editedRecommendations);
     onClose();
   };
 
@@ -1931,18 +1922,10 @@ const RiskFactorEditor: React.FC<{
       <div className="relative top-20 mx-auto p-5 border w-4/5 shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">{factor.category}</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
             <span className="sr-only">Close</span>
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M6 18L18 6M6 6l12 12" 
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
@@ -1985,8 +1968,8 @@ const RiskFactorEditor: React.FC<{
 
           {/* Findings */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Findings</label>
-            <div className="mt-2 space-y-2">
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Findings</h4>
+            <div className="space-y-2">
               {editedFindings.map((finding, index) => (
                 <div key={index} className="flex items-center space-x-2">
                   <input
@@ -1997,29 +1980,24 @@ const RiskFactorEditor: React.FC<{
                       newFindings[index] = e.target.value;
                       setEditedFindings(newFindings);
                     }}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                   <button
                     onClick={() => {
                       const newFindings = editedFindings.filter((_, i) => i !== index);
                       setEditedFindings(newFindings);
                     }}
-                    className="text-red-500 hover:text-red-600"
+                    className="text-red-600 hover:text-red-700"
                   >
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                 </div>
               ))}
               <button
                 onClick={() => setEditedFindings([...editedFindings, ''])}
-                className="mt-2 inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 Add Finding
               </button>
@@ -2028,8 +2006,8 @@ const RiskFactorEditor: React.FC<{
 
           {/* Recommendations */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Recommendations</label>
-            <div className="mt-2 space-y-2">
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Recommendations</h4>
+            <div className="space-y-2">
               {editedRecommendations.map((recommendation, index) => (
                 <div key={index} className="flex items-center space-x-2">
                   <input
@@ -2040,37 +2018,31 @@ const RiskFactorEditor: React.FC<{
                       newRecommendations[index] = e.target.value;
                       setEditedRecommendations(newRecommendations);
                     }}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                   <button
                     onClick={() => {
                       const newRecommendations = editedRecommendations.filter((_, i) => i !== index);
                       setEditedRecommendations(newRecommendations);
                     }}
-                    className="text-red-500 hover:text-red-600"
+                    className="text-red-600 hover:text-red-700"
                   >
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                 </div>
               ))}
               <button
                 onClick={() => setEditedRecommendations([...editedRecommendations, ''])}
-                className="mt-2 inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 Add Recommendation
               </button>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="mt-6 flex justify-end space-x-3">
+          <div className="flex justify-end space-x-3">
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -2097,20 +2069,25 @@ const RiskAnalysisSection: React.FC<{
   setRiskRules: (rules: RiskScoreRule[]) => void;
   context: RiskFactorContext;
   onContextUpdate: (context: RiskFactorContext) => void;
-  onRuleChange?: (rules: RiskScoreRule[]) => void;
-  onAdjustmentAdd?: (adjustment: RiskScoreAdjustment) => void;
+  onRuleChange: (ruleId: string, updates: Partial<RiskScoreRule>) => void;
+  onAdjustmentAdd: (adjustment: RiskScoreAdjustment) => void;
 }> = ({ analysis, riskRules, setRiskRules, context, onContextUpdate, onRuleChange, onAdjustmentAdd }) => {
   const [selectedFactor, setSelectedFactor] = useState<RiskFactor | null>(null);
   const [factors, setFactors] = useState(analysis.factors);
 
-  const handleFactorUpdate = (updatedContext: RiskFactorContext, score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => {
+  const handleFactorUpdate = (score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => {
     const updatedFactors = factors.map(f => 
       f.category === selectedFactor?.category 
-        ? { ...f, score, findings, recommendations }
+        ? { 
+            ...f, 
+            score,
+            findings,
+            recommendations,
+            riskLevel: score <= 1 ? 'low' : score <= 2 ? 'medium' : 'high'
+          }
         : f
     );
     setFactors(updatedFactors);
-    onContextUpdate(updatedContext);
     setSelectedFactor(null);
   };
 
@@ -2120,26 +2097,16 @@ const RiskAnalysisSection: React.FC<{
       'bg-green-100 text-green-800';
 
     return (
-      <div>
+      <div 
+        className="cursor-pointer group hover:bg-gray-50 transition-colors duration-150"
+        onClick={() => setSelectedFactor(factor)}
+      >
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-lg font-medium text-gray-900">{factor.category}</h3>
+            <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600">{factor.category}</h3>
             <p className="text-sm text-gray-600">{factor.description}</p>
           </div>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setSelectedFactor(factor)}
-              className="p-1 text-gray-400 hover:text-gray-500"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" 
-                />
-              </svg>
-            </button>
             <div className={`px-2 py-1 rounded-full text-sm font-medium ${riskLevelClass}`}>
               {factor.score} Points
             </div>
@@ -2184,19 +2151,35 @@ const RiskAnalysisSection: React.FC<{
 
       <div className="grid grid-cols-2 gap-6">
         {factors.map(factor => (
-          <div key={factor.category} className="border rounded-lg p-4">
+          <div 
+            key={factor.category} 
+            className="border rounded-lg p-4 hover:shadow-md transition-shadow duration-150 hover:border-blue-200"
+          >
             {renderFactorContent(factor)}
           </div>
         ))}
       </div>
 
       {selectedFactor && (
-        <RiskFactorEditor
-          factor={selectedFactor}
-          context={context}
-          onUpdate={handleFactorUpdate}
-          onClose={() => setSelectedFactor(null)}
-        />
+        selectedFactor.category === 'Clinical Compensation Risk' ? (
+          <ClinicalRiskModal
+            isOpen={true}
+            onClose={() => setSelectedFactor(null)}
+            findings={selectedFactor.findings}
+            recommendations={selectedFactor.recommendations}
+            onUpdate={handleFactorUpdate}
+          />
+        ) : (
+          <RiskFactorEditor
+            factor={selectedFactor}
+            context={context}
+            onUpdate={(updatedContext, score, findings, recommendations) => {
+              handleFactorUpdate(score as 0 | 1 | 2 | 3, findings, recommendations);
+              onContextUpdate(updatedContext);
+            }}
+            onClose={() => setSelectedFactor(null)}
+          />
+        )
       )}
 
       <div className="border-t pt-6">
@@ -2329,6 +2312,172 @@ const riskOptions: Record<string, RiskOption[]> = {
       score: 3
     }
   ]
+};
+
+interface RiskModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  findings: string[];
+  recommendations: string[];
+  onUpdate: (score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => void;
+}
+
+// Update ClinicalRiskModal to use RiskFactorEditor correctly
+const ClinicalRiskModal: React.FC<RiskModalProps> = ({ isOpen, onClose, findings, recommendations, onUpdate }) => {
+  const [selectedScore, setSelectedScore] = useState<0 | 1 | 2 | 3>(0);
+  const [editedFindings, setEditedFindings] = useState<string[]>(findings);
+  const [editedRecommendations, setEditedRecommendations] = useState<string[]>(recommendations);
+
+  const handleSave = () => {
+    onUpdate(selectedScore, editedFindings, editedRecommendations);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+      <div className="relative top-20 mx-auto p-5 border w-4/5 shadow-lg rounded-md bg-white">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Clinical Compensation Risk</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+            <span className="sr-only">Close</span>
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Risk Score Selection */}
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Risk Assessment</h4>
+            <div className="space-y-4">
+              {riskOptions['Compensation Level Risk'].map((option) => (
+                <div
+                  key={option.score}
+                  className={`relative flex items-start p-4 cursor-pointer rounded-lg border ${
+                    selectedScore === option.score 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:bg-gray-100'
+                  }`}
+                  onClick={() => setSelectedScore(option.score)}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-gray-900">
+                      {option.label}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-500">
+                      {option.description}
+                    </div>
+                  </div>
+                  <div className="ml-3 flex items-center h-5">
+                    <input
+                      type="radio"
+                      checked={selectedScore === option.score}
+                      onChange={() => setSelectedScore(option.score)}
+                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Findings */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Findings</h4>
+            <div className="space-y-2">
+              {editedFindings.map((finding, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={finding}
+                    onChange={(e) => {
+                      const newFindings = [...editedFindings];
+                      newFindings[index] = e.target.value;
+                      setEditedFindings(newFindings);
+                    }}
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => {
+                      const newFindings = editedFindings.filter((_, i) => i !== index);
+                      setEditedFindings(newFindings);
+                    }}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setEditedFindings([...editedFindings, ''])}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Add Finding
+              </button>
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Recommendations</h4>
+            <div className="space-y-2">
+              {editedRecommendations.map((recommendation, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={recommendation}
+                    onChange={(e) => {
+                      const newRecommendations = [...editedRecommendations];
+                      newRecommendations[index] = e.target.value;
+                      setEditedRecommendations(newRecommendations);
+                    }}
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => {
+                      const newRecommendations = editedRecommendations.filter((_, i) => i !== index);
+                      setEditedRecommendations(newRecommendations);
+                    }}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setEditedRecommendations([...editedRecommendations, ''])}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Add Recommendation
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default CompensationAnalysis; 
