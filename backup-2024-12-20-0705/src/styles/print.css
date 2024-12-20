@@ -1,0 +1,54 @@
+@media print {
+  /* Hide navigation and UI elements */
+  nav, 
+  header,
+  .print:hidden {
+    display: none !important;
+  }
+
+  /* Remove background colors and shadows for better printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure white background */
+  body {
+    background: white;
+  }
+
+  /* Page break controls */
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Remove unnecessary spacing */
+  .print-compact {
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Ensure text is readable when printed */
+  body {
+    font-size: 12pt;
+    line-height: 1.3;
+  }
+
+  /* Ensure links are readable */
+  a {
+    text-decoration: none !important;
+  }
+
+  /* Hide scrollbars */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+} 

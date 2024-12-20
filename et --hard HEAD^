@@ -1,0 +1,5 @@
+8a5777d5 - Fix TypeScript configuration and update Vercel build command
+447f33cc - Fix Vercel build permissions for TypeScript compiler
+3c709913 - Update Employee Data screen styling to match Market Data screen exactly
+e65cf1ef - Adjust Employee Data Management header position to match Market Data screen
+94e4eb83 - Remove alert messages to match Market Data screen behavior
