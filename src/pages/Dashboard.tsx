@@ -1,24 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Table, Tag, Button, Input } from 'antd';
 import { Link } from 'react-router-dom';
-import { UsergroupAddOutlined, AlertOutlined, CheckCircleOutlined, ClockCircleOutlined, SearchOutlined } from '@ant-design/icons';
+import { UsergroupAddOutlined, AlertOutlined, CheckCircleOutlined, ClockCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import '../styles/ProviderTable.css';
-import { formatCurrency, formatNumber } from '../../src/utils/formatters';
+import { formatCurrency, formatNumber } from '../utils/formatters';
 
 interface MarketData {
   specialty: string;
-  tcc_25th: number;
-  tcc_50th: number;
-  tcc_75th: number;
-  tcc_90th: number;
-  wrvu_25th: number;
-  wrvu_50th: number;
-  wrvu_75th: number;
-  wrvu_90th: number;
-  tcc_per_wrvu_25th: number;
-  tcc_per_wrvu_50th: number;
-  tcc_per_wrvu_75th: number;
-  tcc_per_wrvu_90th: number;
+  total_25th: number;
+  total_50th: number;
+  total_75th: number;
+  total_90th: number;
+  wrvus_25th: number;
+  wrvus_50th: number;
+  wrvus_75th: number;
+  wrvus_90th: number;
+  cf_25th: number;
+  cf_50th: number;
+  cf_75th: number;
+  cf_90th: number;
 }
 
 interface Provider {
@@ -33,6 +33,15 @@ interface Provider {
   conversion_factor: number;
 }
 
+interface ReviewData {
+  provider_id: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  review_date: string | null;
+  reviewer: string;
+  comments: string;
+  risk_level: string;
+}
+
 interface ProviderMetrics {
   id: string;
   name: string;
@@ -43,24 +52,42 @@ interface ProviderMetrics {
   wrvu_percentile: number;
   tcc_per_wrvu: number;
   tcc_per_wrvu_percentile: number;
-  risk_level: string;
-  status: string;
+  productivity_gap: number;
+  risk_level: 'Low' | 'Medium' | 'High';
+  total_risk_score: number;
+  status: 'Pending' | 'Approved' | 'Rejected';
   last_review_date: string | null;
+  has_benchmarks: boolean;
+}
+
+interface DashboardMetrics {
+  totalProviders: number;
+  atRiskProviders: number;
+  pendingReviews: number;
+  completedReviews: number;
 }
 
 const Dashboard: React.FC = () => {
-  const [searchText, setSearchText] = useState('');
-  const [providerMetrics, setProviderMetrics] = useState<ProviderMetrics[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [marketData, setMarketData] = useState<MarketData[]>([]);
-  const [metrics, setMetrics] = useState({
+  const [providerMetrics, setProviderMetrics] = useState<ProviderMetrics[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const [showMissingBenchmarksOnly, setShowMissingBenchmarksOnly] = useState(false);
+  const [providersWithoutMarketData, setProvidersWithoutMarketData] = useState<string[]>([]);
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalProviders: 0,
     atRiskProviders: 0,
     pendingReviews: 0,
     completedReviews: 0
   });
 
-  // Linear interpolation function to calculate exact percentile
+  // Load review data from localStorage
+  const loadReviewData = (): { [key: string]: ReviewData } => {
+    const savedReviews = localStorage.getItem('providerReviews');
+    return savedReviews ? JSON.parse(savedReviews) : {};
+  };
+
+  // Calculate exact percentile using linear interpolation
   const calculateExactPercentile = (value: number, benchmarks: { value: number; percentile: number }[]): number => {
     // Sort benchmarks by value
     const sortedBenchmarks = [...benchmarks].sort((a, b) => a.value - b.value);
@@ -99,6 +126,26 @@ const Dashboard: React.FC = () => {
     return 'Low';
   };
 
+  const calculateRiskScore = (tccPercentile: number, wrvuPercentile: number, tccPerWrvuPercentile: number): number => {
+    let score = 0;
+    // TCC percentile risk
+    if (tccPercentile > 90) score += 3;
+    else if (tccPercentile > 75) score += 2;
+    else if (tccPercentile > 50) score += 1;
+
+    // wRVU percentile risk (inverse - lower is riskier)
+    if (wrvuPercentile < 25) score += 3;
+    else if (wrvuPercentile < 50) score += 2;
+    else if (wrvuPercentile < 75) score += 1;
+
+    // TCC per wRVU percentile risk
+    if (tccPerWrvuPercentile > 90) score += 3;
+    else if (tccPerWrvuPercentile > 75) score += 2;
+    else if (tccPerWrvuPercentile > 50) score += 1;
+
+    return score;
+  };
+
   useEffect(() => {
     // Load provider data from localStorage
     const savedData = localStorage.getItem('employeeData');
@@ -111,117 +158,102 @@ const Dashboard: React.FC = () => {
       }
     }
 
-    // Mock market data for each specialty
-    const mockMarketData: MarketData[] = [
-      {
-        specialty: 'Dermatology',
-        tcc_25th: 350000,
-        tcc_50th: 425000,
-        tcc_75th: 500000,
-        tcc_90th: 575000,
-        wrvu_25th: 4500,
-        wrvu_50th: 5500,
-        wrvu_75th: 6500,
-        wrvu_90th: 7500,
-        tcc_per_wrvu_25th: 65,
-        tcc_per_wrvu_50th: 75,
-        tcc_per_wrvu_75th: 85,
-        tcc_per_wrvu_90th: 95
-      },
-      {
-        specialty: 'Family Medicine',
-        tcc_25th: 220000,
-        tcc_50th: 260000,
-        tcc_75th: 310000,
-        tcc_90th: 375000,
-        wrvu_25th: 4000,
-        wrvu_50th: 4800,
-        wrvu_75th: 5600,
-        wrvu_90th: 6500,
-        tcc_per_wrvu_25th: 50,
-        tcc_per_wrvu_50th: 58,
-        tcc_per_wrvu_75th: 68,
-        tcc_per_wrvu_90th: 80
-      },
-      {
-        specialty: 'Internal Medicine',
-        tcc_25th: 230000,
-        tcc_50th: 275000,
-        tcc_75th: 325000,
-        tcc_90th: 390000,
-        wrvu_25th: 4200,
-        wrvu_50th: 5000,
-        wrvu_75th: 5800,
-        wrvu_90th: 6700,
-        tcc_per_wrvu_25th: 52,
-        tcc_per_wrvu_50th: 60,
-        tcc_per_wrvu_75th: 70,
-        tcc_per_wrvu_90th: 82
+    // Load market data from localStorage
+    const savedMarketData = localStorage.getItem('marketData');
+    if (savedMarketData) {
+      try {
+        const parsedMarketData = JSON.parse(savedMarketData);
+        setMarketData(parsedMarketData);
+      } catch (err) {
+        console.error('Error loading market data:', err);
       }
-    ];
-    setMarketData(mockMarketData);
+    }
   }, []);
 
   useEffect(() => {
-    if (providers.length && marketData.length) {
-      const calculatedMetrics = providers.map(provider => {
-        const marketBenchmarks = marketData.find(m => m.specialty === provider.specialty) || marketData[0];
+    if (providers.length > 0 && marketData.length > 0) {
+      const reviewData = loadReviewData();
+      const missingProviders: string[] = [];
+      
+      const calculatedMetrics: ProviderMetrics[] = providers
+        .map(provider => {
+          const marketBenchmarks = marketData.find(m => m.specialty.toLowerCase() === provider.specialty.toLowerCase());
+          const hasBenchmarks = !!marketBenchmarks;
 
-        const tcc = provider.base_pay + provider.wrvu_incentive + provider.quality_payments + provider.admin_payments;
-        const tcc_per_wrvu = provider.conversion_factor;
+          if (!hasBenchmarks) {
+            missingProviders.push(`${provider.full_name} (${provider.specialty})`);
+          }
 
-        // Create benchmark arrays for interpolation
-        const tccBenchmarks = [
-          { value: marketBenchmarks.tcc_25th, percentile: 25 },
-          { value: marketBenchmarks.tcc_50th, percentile: 50 },
-          { value: marketBenchmarks.tcc_75th, percentile: 75 },
-          { value: marketBenchmarks.tcc_90th, percentile: 90 }
-        ];
+          const tcc = provider.base_pay + provider.wrvu_incentive + provider.quality_payments + provider.admin_payments;
+          const tcc_per_wrvu = provider.annual_wrvus > 0 ? tcc / provider.annual_wrvus : 0;
 
-        const wrvuBenchmarks = [
-          { value: marketBenchmarks.wrvu_25th, percentile: 25 },
-          { value: marketBenchmarks.wrvu_50th, percentile: 50 },
-          { value: marketBenchmarks.wrvu_75th, percentile: 75 },
-          { value: marketBenchmarks.wrvu_90th, percentile: 90 }
-        ];
+          let tcc_percentile = 0;
+          let wrvu_percentile = 0;
+          let tcc_per_wrvu_percentile = 0;
+          let productivity_gap = 0;
+          let risk_level: 'Low' | 'Medium' | 'High' = 'Low';
+          let total_risk_score = 0;
 
-        const tccPerWrvuBenchmarks = [
-          { value: marketBenchmarks.tcc_per_wrvu_25th, percentile: 25 },
-          { value: marketBenchmarks.tcc_per_wrvu_50th, percentile: 50 },
-          { value: marketBenchmarks.tcc_per_wrvu_75th, percentile: 75 },
-          { value: marketBenchmarks.tcc_per_wrvu_90th, percentile: 90 }
-        ];
+          if (hasBenchmarks) {
+            const tccBenchmarks = [
+              { value: marketBenchmarks.total_25th, percentile: 25 },
+              { value: marketBenchmarks.total_50th, percentile: 50 },
+              { value: marketBenchmarks.total_75th, percentile: 75 },
+              { value: marketBenchmarks.total_90th, percentile: 90 }
+            ];
 
-        // Calculate exact percentiles using linear interpolation
-        const tcc_percentile = Math.round(calculateExactPercentile(tcc, tccBenchmarks));
-        const wrvu_percentile = Math.round(calculateExactPercentile(provider.annual_wrvus, wrvuBenchmarks));
-        const tcc_per_wrvu_percentile = Math.round(calculateExactPercentile(tcc_per_wrvu, tccPerWrvuBenchmarks));
+            const wrvuBenchmarks = [
+              { value: marketBenchmarks.wrvus_25th, percentile: 25 },
+              { value: marketBenchmarks.wrvus_50th, percentile: 50 },
+              { value: marketBenchmarks.wrvus_75th, percentile: 75 },
+              { value: marketBenchmarks.wrvus_90th, percentile: 90 }
+            ];
 
-        const risk_level = calculateRiskLevel(tcc_percentile, wrvu_percentile, tcc_per_wrvu_percentile);
-        
-        return {
-          id: provider.employee_id,
-          name: provider.full_name,
-          specialty: provider.specialty,
-          tcc,
-          tcc_percentile,
-          annual_wrvus: provider.annual_wrvus,
-          wrvu_percentile,
-          tcc_per_wrvu,
-          tcc_per_wrvu_percentile,
-          risk_level,
-          status: 'Pending',
-          last_review_date: null
-        };
-      });
+            const cfBenchmarks = [
+              { value: marketBenchmarks.cf_25th, percentile: 25 },
+              { value: marketBenchmarks.cf_50th, percentile: 50 },
+              { value: marketBenchmarks.cf_75th, percentile: 75 },
+              { value: marketBenchmarks.cf_90th, percentile: 90 }
+            ];
 
+            tcc_percentile = Math.round(calculateExactPercentile(tcc, tccBenchmarks));
+            wrvu_percentile = Math.round(calculateExactPercentile(provider.annual_wrvus, wrvuBenchmarks));
+            tcc_per_wrvu_percentile = Math.round(calculateExactPercentile(provider.conversion_factor, cfBenchmarks));
+            productivity_gap = wrvu_percentile - tcc_percentile;
+            total_risk_score = calculateRiskScore(tcc_percentile, wrvu_percentile, tcc_per_wrvu_percentile);
+            risk_level = calculateRiskLevel(tcc_percentile, wrvu_percentile, tcc_per_wrvu_percentile) as 'Low' | 'Medium' | 'High';
+          }
+          
+          const review = reviewData[provider.employee_id];
+
+          return {
+            id: provider.employee_id,
+            name: provider.full_name,
+            specialty: provider.specialty,
+            tcc,
+            tcc_percentile,
+            annual_wrvus: provider.annual_wrvus,
+            wrvu_percentile,
+            tcc_per_wrvu,
+            tcc_per_wrvu_percentile,
+            productivity_gap,
+            risk_level,
+            total_risk_score,
+            status: (review?.status || 'Pending') as 'Pending' | 'Approved' | 'Rejected',
+            last_review_date: review?.review_date || null,
+            has_benchmarks: hasBenchmarks
+          };
+        });
+
+      setProvidersWithoutMarketData(missingProviders);
       setProviderMetrics(calculatedMetrics);
       
+      // Update metrics
       setMetrics({
         totalProviders: calculatedMetrics.length,
-        atRiskProviders: calculatedMetrics.filter(p => p.tcc_percentile > 75).length,
-        pendingReviews: calculatedMetrics.filter(p => p.status === 'Pending').length,
-        completedReviews: calculatedMetrics.filter(p => p.status === 'Completed').length
+        atRiskProviders: calculatedMetrics.filter(p => p.has_benchmarks && p.risk_level === 'High').length,
+        pendingReviews: calculatedMetrics.filter(p => p.has_benchmarks && p.status === 'Pending').length,
+        completedReviews: calculatedMetrics.filter(p => p.has_benchmarks && (p.status === 'Approved' || p.status === 'Rejected')).length
       });
     }
   }, [providers, marketData]);
@@ -232,12 +264,19 @@ const Dashboard: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       render: (text: string, record: ProviderMetrics) => (
-        <Link 
-          to={`/results/${encodeURIComponent(text)}?specialty=${encodeURIComponent(record.specialty)}&id=${encodeURIComponent(record.id)}`}
-          className="text-blue-600 hover:text-blue-800"
-        >
-          {text}
-        </Link>
+        <div>
+          <Link 
+            to={`/results/${encodeURIComponent(text)}?specialty=${encodeURIComponent(record.specialty)}&id=${encodeURIComponent(record.id)}`}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            {text}
+          </Link>
+          {!record.has_benchmarks && (
+            <Tag color="red" className="ml-2">
+              No Benchmarks
+            </Tag>
+          )}
+        </div>
       ),
       sorter: (a: ProviderMetrics, b: ProviderMetrics) => a.name.localeCompare(b.name)
     },
@@ -245,6 +284,16 @@ const Dashboard: React.FC = () => {
       title: 'Specialty',
       dataIndex: 'specialty',
       key: 'specialty',
+      render: (text: string, record: ProviderMetrics) => (
+        <div>
+          {text}
+          {!record.has_benchmarks && (
+            <div className="text-xs text-red-500 mt-1">
+              Missing benchmarks
+            </div>
+          )}
+        </div>
+      ),
       sorter: (a: ProviderMetrics, b: ProviderMetrics) => a.specialty.localeCompare(b.specialty)
     },
     {
@@ -276,18 +325,24 @@ const Dashboard: React.FC = () => {
       sorter: (a: ProviderMetrics, b: ProviderMetrics) => a.wrvu_percentile - b.wrvu_percentile
     },
     {
-      title: 'TCC/wRVU',
-      dataIndex: 'tcc_per_wrvu',
-      key: 'tcc_per_wrvu',
-      render: (value: number) => formatCurrency(value),
-      sorter: (a: ProviderMetrics, b: ProviderMetrics) => a.tcc_per_wrvu - b.tcc_per_wrvu
+      title: 'Productivity Gap',
+      dataIndex: 'productivity_gap',
+      key: 'productivity_gap',
+      render: (value: number) => {
+        const color = value < -10 ? 'red' : value > 10 ? 'green' : 'default';
+        return <Tag color={color}>{value > 0 ? `+${value}` : value} pts</Tag>;
+      },
+      sorter: (a: ProviderMetrics, b: ProviderMetrics) => a.productivity_gap - b.productivity_gap
     },
     {
-      title: 'TCC/wRVU %ile',
-      dataIndex: 'tcc_per_wrvu_percentile',
-      key: 'tcc_per_wrvu_percentile',
-      render: (value: number) => `${value}%`,
-      sorter: (a: ProviderMetrics, b: ProviderMetrics) => a.tcc_per_wrvu_percentile - b.tcc_per_wrvu_percentile
+      title: 'Risk Score',
+      dataIndex: 'total_risk_score',
+      key: 'total_risk_score',
+      render: (value: number) => {
+        const color = value >= 6 ? 'red' : value >= 3 ? 'orange' : 'green';
+        return <Tag color={color}>{value} pts</Tag>;
+      },
+      sorter: (a: ProviderMetrics, b: ProviderMetrics) => a.total_risk_score - b.total_risk_score
     },
     {
       title: 'Risk Level',
@@ -323,10 +378,15 @@ const Dashboard: React.FC = () => {
     }
   ];
 
-  const filteredProviderMetrics = providerMetrics.filter(provider => 
-    provider.name.toLowerCase().includes(searchText.toLowerCase()) ||
-    provider.specialty.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const filteredProviderMetrics = providerMetrics.filter(provider => {
+    const matchesSearch = provider.name.toLowerCase().includes(searchText.toLowerCase()) ||
+                         provider.specialty.toLowerCase().includes(searchText.toLowerCase());
+    
+    if (showMissingBenchmarksOnly) {
+      return matchesSearch && !provider.has_benchmarks;
+    }
+    return matchesSearch;
+  });
 
   return (
     <div className="space-y-6">
@@ -347,7 +407,7 @@ const Dashboard: React.FC = () => {
           <div className="flex items-center">
             <AlertOutlined className="text-2xl text-red-500 mr-4" />
             <div>
-              <div className="text-sm text-gray-600">At Risk (&gt;75th percentile)</div>
+              <div className="text-sm text-gray-600">High Risk</div>
               <div className="text-2xl font-semibold">{metrics.atRiskProviders}</div>
             </div>
           </div>
@@ -377,7 +437,22 @@ const Dashboard: React.FC = () => {
       <div className="bg-white rounded-lg shadow">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Provider FMV Status</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Provider FMV Status</h2>
+              <p className="text-sm text-gray-500">Review and manage provider compensation analysis</p>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center mb-4">
+            <Button
+              type={showMissingBenchmarksOnly ? "primary" : "default"}
+              onClick={() => setShowMissingBenchmarksOnly(!showMissingBenchmarksOnly)}
+              className={showMissingBenchmarksOnly ? "bg-blue-500" : ""}
+              icon={<WarningOutlined />}
+            >
+              {showMissingBenchmarksOnly ? "Show All Providers" : `Show Missing Benchmarks Only (${providersWithoutMarketData.length})`}
+            </Button>
+
             <Input
               placeholder="Search providers or specialties..."
               prefix={<SearchOutlined className="text-gray-400" />}
@@ -387,9 +462,10 @@ const Dashboard: React.FC = () => {
               className="rounded-md"
             />
           </div>
+
           <Table
-            dataSource={filteredProviderMetrics}
             columns={columns}
+            dataSource={filteredProviderMetrics}
             rowKey="id"
             pagination={{ pageSize: 10 }}
             bordered

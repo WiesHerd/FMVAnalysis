@@ -215,9 +215,9 @@ interface RiskScoreRule {
 }
 
 interface RiskScoreAdjustment {
-  factorId: string;
-  adjustment: number;
-  reason: string;
+  id: string;
+  description: string;
+  score: number;
 }
 
 // Add new interfaces for editable context
@@ -1098,45 +1098,24 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
     adminRate: Number(b.adminRate) || 0
   });
 
-  // Initialize benchmarks with market data values
-  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([
-    {
-      percentile: '25th',
-      tcc: 245055,
-      wrvus: 4823,
-      conversionFactor: 47.90,
-      clinicalFte: 1.0,
-      callRate: 0,
-      adminRate: 0
-    },
-    {
-      percentile: '50th',
-      tcc: 285583,
-      wrvus: 5907,
-      conversionFactor: 52.10,
-      clinicalFte: 1.0,
-      callRate: 0,
-      adminRate: 0
-    },
-    {
-      percentile: '75th',
-      tcc: 345935,
-      wrvus: 7073,
-      conversionFactor: 63.10,
-      clinicalFte: 1.0,
-      callRate: 0,
-      adminRate: 0
-    },
-    {
-      percentile: '90th',
-      tcc: 404837,
-      wrvus: 8061,
-      conversionFactor: 72.40,
-      clinicalFte: 1.0,
-      callRate: 0,
-      adminRate: 0
+  // Initialize empty benchmarks
+  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
+
+  // Update benchmarks when initialBenchmarks prop changes
+  useEffect(() => {
+    if (initialBenchmarks && initialBenchmarks.length > 0) {
+      setBenchmarks(initialBenchmarks.map(b => ({
+        percentile: b.percentile,
+        tcc: b.tcc || 0,
+        wrvus: b.wrvus || 0,
+        conversionFactor: b.conversionFactor || 0,
+        clinicalFte: 1.0,
+        callRate: 0,
+        adminRate: 0
+      })));
     }
-  ]);
+  }, [initialBenchmarks]);
+
   const [isEditingBenchmarks, setIsEditingBenchmarks] = useState(false);
   const [isEditingComponents, setIsEditingComponents] = useState(false);
   
@@ -1202,69 +1181,43 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
   const getPercentilePosition = (value: number, metric: keyof Benchmark) => {
     if (!benchmarks?.length) return 0;
     
-    // Get benchmark values
+    // Get benchmark values for each percentile
     const benchmarkData = [
       { percentile: 0, value: 0 },
-      { percentile: 25, value: Number(benchmarks[0][metric]) },
-      { percentile: 75, value: Number(benchmarks[2][metric]) },
-      { percentile: 90, value: Number(benchmarks[3][metric]) },
-      { percentile: 100, value: Number(benchmarks[3][metric]) * 1.2 } // Max reasonable value
+      { percentile: 10, value: Number(benchmarks[0][metric]) },  // 10th
+      { percentile: 25, value: Number(benchmarks[1][metric]) },  // 25th
+      { percentile: 50, value: Number(benchmarks[2][metric]) },  // 50th
+      { percentile: 75, value: Number(benchmarks[3][metric]) },  // 75th
+      { percentile: 90, value: Number(benchmarks[4][metric]) }   // 90th
     ];
 
-    // If value is below 25th percentile
-    if (value <= benchmarkData[1].value) {
-      return interpolate(
-        value,
-        benchmarkData[0].value,
-        benchmarkData[1].value,
-        benchmarkData[0].percentile,
-        benchmarkData[1].percentile
-      );
-    }
-
-    // If value is between 25th and 75th
-    if (value <= benchmarkData[2].value) {
-      return interpolate(
-        value,
-        benchmarkData[1].value,
-        benchmarkData[2].value,
-        benchmarkData[1].percentile,
-        benchmarkData[2].percentile
-      );
-    }
-
-    // If value is between 75th and 90th
-    if (value <= benchmarkData[3].value) {
-      return interpolate(
-        value,
-        benchmarkData[2].value,
-        benchmarkData[3].value,
-        benchmarkData[2].percentile,
-        benchmarkData[3].percentile
-      );
+    // Find which benchmark range the value falls into
+    for (let i = 0; i < benchmarkData.length - 1; i++) {
+      const lower = benchmarkData[i];
+      const upper = benchmarkData[i + 1];
+      
+      if (value <= upper.value) {
+        // Interpolate between the two benchmark points
+        const range = upper.value - lower.value;
+        const position = value - lower.value;
+        const ratio = range === 0 ? 0 : position / range;
+        return lower.percentile + (ratio * (upper.percentile - lower.percentile));
+      }
     }
 
     // If value is above 90th percentile
-    return interpolate(
-      value,
-      benchmarkData[3].value,
-      benchmarkData[4].value,
-      benchmarkData[3].percentile,
-      benchmarkData[4].percentile
-    );
-  };
+    const lastBenchmark = benchmarkData[benchmarkData.length - 1];
+    const maxValue = lastBenchmark.value * 1.2; // 20% above 90th percentile is considered 100th
+    
+    if (value >= maxValue) {
+      return 100;
+    }
 
-  // Helper function for linear interpolation
-  const interpolate = (
-    value: number,
-    min: number,
-    max: number,
-    minPercentile: number,
-    maxPercentile: number
-  ): number => {
-    if (max === min) return minPercentile;
-    const ratio = (value - min) / (max - min);
-    return minPercentile + ratio * (maxPercentile - minPercentile);
+    // Interpolate between 90th and 100th
+    const range = maxValue - lastBenchmark.value;
+    const position = value - lastBenchmark.value;
+    const ratio = position / range;
+    return lastBenchmark.percentile + (ratio * (100 - lastBenchmark.percentile));
   };
 
   const handleBenchmarkChange = (index: number, field: keyof Benchmark, value: string) => {
@@ -1426,8 +1379,8 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
   const determineOverallSeverity = (totalScore: number, metrics: RiskMetric[]): 'low' | 'medium' | 'high' | 'critical' => {
     // Consider both score and context
     if (totalScore >= 9) return 'critical';
-    if (totalScore >= 6) return 'high';
-    if (totalScore >= 3) return 'medium';
+    if (totalScore >=6) return 'high';
+    if (totalScore >=3) return 'medium';
     return 'low';
   };
 
@@ -1794,14 +1747,14 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
               </button>
             </div>
             <div className="overflow-hidden border rounded-lg">
-              <table className="min-w-full divide-y divide-gray-200 font-inter">
+              <table className="min-w-full divide-y divide-gray-200 font-inter text-sm">
                 <thead className="bg-gray-50 print:bg-gray-100">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Metric
                     </th>
                     {benchmarks.map(b => (
-                      <th key={b.percentile} scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th key={b.percentile} scope="col" className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         {b.percentile}
                       </th>
                     ))}
@@ -1809,19 +1762,19 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                       Total Cash Compensation
                     </td>
                     {benchmarks
                       .slice()
                       .map((b, index) => (
-                        <td key={b.percentile} className="px-4 py-4 whitespace-nowrap text-sm text-right">
+                        <td key={b.percentile} className="px-2 py-2 whitespace-nowrap text-sm text-right">
                           {isEditingBenchmarks ? (
                             <input
                               type="text"
                               value={(b.tcc || 0).toLocaleString()}
                               onChange={(e) => handleBenchmarkChange(index, 'tcc', e.target.value.replace(/,/g, ''))}
-                              className="w-32 text-right border rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm font-inter"
+                              className="w-24 text-right border rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm font-inter"
                             />
                           ) : (
                             <span className="font-medium text-gray-900">${(b.tcc || 0).toLocaleString()}</span>
@@ -1830,19 +1783,19 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
                       ))}
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                       Annual wRVUs
                     </td>
                     {benchmarks
                       .slice()
                       .map((b, index) => (
-                        <td key={b.percentile} className="px-4 py-4 whitespace-nowrap text-sm text-right">
+                        <td key={b.percentile} className="px-2 py-2 whitespace-nowrap text-sm text-right">
                           {isEditingBenchmarks ? (
                             <input
                               type="text"
                               value={(b.wrvus || 0).toLocaleString()}
                               onChange={(e) => handleBenchmarkChange(index, 'wrvus', e.target.value.replace(/,/g, ''))}
-                              className="w-28 text-right border rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm font-inter"
+                              className="w-20 text-right border rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm font-inter"
                             />
                           ) : (
                             <span className="font-medium text-gray-900">{(b.wrvus || 0).toLocaleString()}</span>
@@ -1851,16 +1804,16 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
                       ))}
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                       Conversion Factor
                     </td>
                     {benchmarks
                       .slice()
                       .map((b, index) => (
-                        <td key={b.percentile} className="px-4 py-4 whitespace-nowrap text-sm text-right">
+                        <td key={b.percentile} className="px-2 py-2 whitespace-nowrap text-sm text-right">
                           {isEditingBenchmarks ? (
                             <div className="relative inline-block">
-                              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                              <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                                 <span className="text-gray-500 sm:text-sm">$</span>
                               </div>
                               <input
@@ -1874,7 +1827,7 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
                                     handleBenchmarkChange(index, 'conversionFactor', value);
                                   }
                                 }}
-                                className="w-28 text-right pl-7 border rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm font-inter"
+                                className="w-20 text-right pl-6 border rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm font-inter"
                               />
                             </div>
                           ) : (
@@ -1907,464 +1860,34 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
 };
 
 // Add RiskFactorEditor component
-const RiskFactorEditor: React.FC<RiskFactorEditorProps> = ({ factor, context, onUpdate, onClose }) => {
-  const [selectedScore, setSelectedScore] = useState<0 | 1 | 2 | 3>(factor.score);
-  const [editedFindings, setEditedFindings] = useState<string[]>(factor.findings);
-  const [editedRecommendations, setEditedRecommendations] = useState<string[]>(factor.recommendations);
+const RiskFactorEditor: React.FC<RiskFactorEditorProps> = ({ context, onContextChange }) => {
+  const [selectedScore, setSelectedScore] = useState<0 | 1 | 2 | 3>(context.practice.qualityMetrics.type === 'objective' ? 0 : context.practice.qualityMetrics.type === 'subjective' ? 1 : 2);
+  const [editedFindings, setEditedFindings] = useState<string[]>(context.practice.qualityMetrics.metrics.map(m => m.name));
+  const [editedRecommendations, setEditedRecommendations] = useState<string[]>(context.practice.qualityMetrics.metrics.map(m => m.name));
 
   const handleSave = () => {
-    onUpdate(context, selectedScore, editedFindings, editedRecommendations);
-    onClose();
+    onContextChange({
+      ...context,
+      practice: {
+        ...context.practice,
+        qualityMetrics: {
+          ...context.practice.qualityMetrics,
+          type: selectedScore === 0 ? 'objective' : selectedScore === 1 ? 'subjective' : 'mixed',
+          metrics: context.practice.qualityMetrics.metrics.map(m => ({
+            ...m,
+            actual: selectedScore === 0 ? m.target : selectedScore === 1 ? m.actual : m.actual
+          }))
+        }
+      }
+    });
   };
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
       <div className="relative top-20 mx-auto p-5 border w-4/5 shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">{factor.category}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-            <span className="sr-only">Close</span>
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {/* Risk Score Selection */}
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Risk Assessment</h4>
-            <div className="space-y-4">
-              {riskOptions[factor.category]?.map((option) => (
-                <div
-                  key={option.score}
-                  className={`relative flex items-start p-4 cursor-pointer rounded-lg border ${
-                    selectedScore === option.score 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:bg-gray-100'
-                  }`}
-                  onClick={() => setSelectedScore(option.score)}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-gray-900">
-                      {option.label}
-                    </div>
-                    <div className="mt-1 text-sm text-gray-500">
-                      {option.description}
-                    </div>
-                  </div>
-                  <div className="ml-3 flex items-center h-5">
-                    <input
-                      type="radio"
-                      checked={selectedScore === option.score}
-                      onChange={() => setSelectedScore(option.score)}
-                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Findings */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Findings</h4>
-            <div className="space-y-2">
-              {editedFindings.map((finding, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={finding}
-                    onChange={(e) => {
-                      const newFindings = [...editedFindings];
-                      newFindings[index] = e.target.value;
-                      setEditedFindings(newFindings);
-                    }}
-                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={() => {
-                      const newFindings = editedFindings.filter((_, i) => i !== index);
-                      setEditedFindings(newFindings);
-                    }}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => setEditedFindings([...editedFindings, ''])}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Add Finding
-              </button>
-            </div>
-          </div>
-
-          {/* Recommendations */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Recommendations</h4>
-            <div className="space-y-2">
-              {editedRecommendations.map((recommendation, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={recommendation}
-                    onChange={(e) => {
-                      const newRecommendations = [...editedRecommendations];
-                      newRecommendations[index] = e.target.value;
-                      setEditedRecommendations(newRecommendations);
-                    }}
-                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={() => {
-                      const newRecommendations = editedRecommendations.filter((_, i) => i !== index);
-                      setEditedRecommendations(newRecommendations);
-                    }}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => setEditedRecommendations([...editedRecommendations, ''])}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Add Recommendation
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Save Changes
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Update RiskAnalysisSection to handle the updated editor
-const RiskAnalysisSection: React.FC<{
-  analysis: RiskAnalysis;
-  riskRules: RiskScoreRule[];
-  setRiskRules: (rules: RiskScoreRule[]) => void;
-  context: RiskFactorContext;
-  onContextUpdate: (context: RiskFactorContext) => void;
-  onRuleChange: (ruleId: string, updates: Partial<RiskScoreRule>) => void;
-  onAdjustmentAdd: (adjustment: RiskScoreAdjustment) => void;
-}> = ({ analysis, riskRules, setRiskRules, context, onContextUpdate, onRuleChange, onAdjustmentAdd }) => {
-  const [selectedFactor, setSelectedFactor] = useState<RiskFactor | null>(null);
-  const [factors, setFactors] = useState(analysis.factors);
-  const [totalScore, setTotalScore] = useState(analysis.totalScore);
-
-  // Calculate risk level based on total score
-  const calculateRiskLevel = (score: number): 'low' | 'medium' | 'high' | 'critical' => {
-    if (score >= 10) return 'critical';
-    if (score >= 7) return 'high';
-    if (score >= 4) return 'medium';
-    return 'low';
-  };
-
-  // Update total score whenever factors change
-  useEffect(() => {
-    const newTotalScore = factors.reduce((sum, factor) => sum + factor.score, 0);
-    setTotalScore(newTotalScore);
-  }, [factors]);
-
-  const handleFactorUpdate = (score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => {
-    const updatedFactors = factors.map(f => 
-      f.category === selectedFactor?.category 
-        ? { 
-            ...f, 
-            score,
-            findings,
-            recommendations,
-            riskLevel: score <= 1 ? 'low' : score <= 2 ? 'medium' : 'high'
-          }
-        : f
-    );
-    setFactors(updatedFactors);
-    setSelectedFactor(null);
-  };
-
-  const renderFactorContent = (factor: RiskFactor) => {
-    const riskLevelClass = factor.riskLevel === 'high' ? 'bg-red-100 text-red-800' :
-      factor.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-      'bg-green-100 text-green-800';
-
-    return (
-      <div 
-        className="cursor-pointer group hover:bg-gray-50 transition-colors duration-150"
-        onClick={() => setSelectedFactor(factor)}
-      >
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600">{factor.category}</h3>
-            <p className="text-sm text-gray-600">{factor.description}</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className={`px-2 py-1 rounded-full text-sm font-medium ${riskLevelClass}`}>
-              {factor.score} Points
-            </div>
-          </div>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <h4 className="text-sm font-medium text-gray-900">Findings:</h4>
-            <ul className="mt-1 list-disc list-inside text-sm text-gray-600">
-              {factor.findings.map((finding, i) => (
-                <li key={i}>{finding}</li>
-              ))}
-            </ul>
-          </div>
-          {factor.recommendations.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-900">Recommendations:</h4>
-              <ul className="mt-1 list-disc list-inside text-sm text-gray-600">
-                {factor.recommendations.map((rec, i) => (
-                  <li key={i}>{rec}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-light text-gray-900">FMV Risk Analysis</h2>
-        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-          calculateRiskLevel(totalScore) === 'critical' ? 'bg-red-100 text-red-800' :
-          calculateRiskLevel(totalScore) === 'high' ? 'bg-orange-100 text-orange-800' :
-          calculateRiskLevel(totalScore) === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-green-100 text-green-800'
-        }`}>
-          {calculateRiskLevel(totalScore).charAt(0).toUpperCase() + calculateRiskLevel(totalScore).slice(1)} Risk
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        {factors.map(factor => (
-          <div 
-            key={factor.category} 
-            className="border rounded-lg p-4 hover:shadow-md transition-shadow duration-150 hover:border-blue-200"
-          >
-            {renderFactorContent(factor)}
-          </div>
-        ))}
-      </div>
-
-      {selectedFactor && (
-        selectedFactor.category === 'Clinical Compensation Risk' ? (
-          <ClinicalRiskModal
-            isOpen={true}
-            onClose={() => setSelectedFactor(null)}
-            findings={selectedFactor.findings}
-            recommendations={selectedFactor.recommendations}
-            onUpdate={handleFactorUpdate}
-          />
-        ) : (
-          <RiskFactorEditor
-            factor={selectedFactor}
-            context={context}
-            onUpdate={(updatedContext, score, findings, recommendations) => {
-              handleFactorUpdate(score as 0 | 1 | 2 | 3, findings, recommendations);
-              onContextUpdate(updatedContext);
-            }}
-            onClose={() => setSelectedFactor(null)}
-          />
-        )
-      )}
-
-      <div className="border-t pt-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900">Overall Assessment</h3>
-            <p className="text-sm text-gray-600">Based on comprehensive analysis of all risk factors</p>
-          </div>
-          <div className="text-2xl font-light text-gray-900">
-            {totalScore} / 12
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-4 gap-4">
-          <div className={`p-3 rounded-lg border ${
-            calculateRiskLevel(totalScore) === 'low' ? 'bg-green-50 border-green-200 ring-2 ring-green-500' : 'bg-green-50 border-green-200'
-          }`}>
-            <div className="text-sm font-medium text-green-800">Low Risk (0-3)</div>
-            <div className="text-xs text-green-600">Aligned with market standards</div>
-          </div>
-          <div className={`p-3 rounded-lg border ${
-            calculateRiskLevel(totalScore) === 'medium' ? 'bg-yellow-50 border-yellow-200 ring-2 ring-yellow-500' : 'bg-yellow-50 border-yellow-200'
-          }`}>
-            <div className="text-sm font-medium text-yellow-800">Medium Risk (4-6)</div>
-            <div className="text-xs text-yellow-600">Additional documentation needed</div>
-          </div>
-          <div className={`p-3 rounded-lg border ${
-            calculateRiskLevel(totalScore) === 'high' ? 'bg-orange-50 border-orange-200 ring-2 ring-orange-500' : 'bg-orange-50 border-orange-200'
-          }`}>
-            <div className="text-sm font-medium text-orange-800">High Risk (7-9)</div>
-            <div className="text-xs text-orange-600">Requires thorough justification</div>
-          </div>
-          <div className={`p-3 rounded-lg border ${
-            calculateRiskLevel(totalScore) === 'critical' ? 'bg-red-50 border-red-200 ring-2 ring-red-500' : 'bg-red-50 border-red-200'
-          }`}>
-            <div className="text-sm font-medium text-red-800">Critical Risk (10-12)</div>
-            <div className="text-xs text-red-600">Immediate review required</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Add RiskOption interface
-interface RiskOption {
-  label: string;
-  description: string;
-  score: 0 | 1 | 2 | 3;
-}
-
-// Add riskOptions definition
-const riskOptions: Record<string, RiskOption[]> = {
-  'Compensation Level Risk': [
-    { 
-      label: 'Low Risk (0 points)', 
-      description: 'Compensation below 50th percentile with matching productivity',
-      score: 0 
-    },
-    { 
-      label: 'Low-Medium Risk (1 point)', 
-      description: '50th-75th percentile with supporting productivity',
-      score: 1 
-    },
-    { 
-      label: 'Medium Risk (2 points)', 
-      description: '75th-90th percentile or misaligned productivity',
-      score: 2 
-    },
-    { 
-      label: 'High Risk (3 points)', 
-      description: 'Above 90th percentile or significantly misaligned productivity',
-      score: 3 
-    }
-  ],
-  'Market Factors Risk': [
-    {
-      label: 'Low Risk (0 points)',
-      description: 'Low demand specialty, low competition',
-      score: 0
-    },
-    {
-      label: 'Low-Medium Risk (1 point)',
-      description: 'Medium demand or moderate competition',
-      score: 1
-    },
-    {
-      label: 'Medium Risk (2 points)',
-      description: 'High demand or high competition',
-      score: 2
-    },
-    {
-      label: 'High Risk (3 points)',
-      description: 'High demand with high competition',
-      score: 3
-    }
-  ],
-  'Documentation Risk': [
-    {
-      label: 'Low Risk (0 points)',
-      description: 'Complete documentation with recent review',
-      score: 0
-    },
-    {
-      label: 'Low-Medium Risk (1 point)',
-      description: 'Minor gaps in documentation',
-      score: 1
-    },
-    {
-      label: 'Medium Risk (2 points)',
-      description: 'Significant documentation gaps',
-      score: 2
-    },
-    {
-      label: 'High Risk (3 points)',
-      description: 'Major documentation deficiencies',
-      score: 3
-    }
-  ],
-  'Structural Risk': [
-    {
-      label: 'Low Risk (0 points)',
-      description: 'Balanced compensation structure with appropriate incentives',
-      score: 0
-    },
-    {
-      label: 'Low-Medium Risk (1 point)',
-      description: 'Mostly balanced with minor concerns',
-      score: 1
-    },
-    {
-      label: 'Medium Risk (2 points)',
-      description: 'Imbalanced structure or misaligned incentives',
-      score: 2
-    },
-    {
-      label: 'High Risk (3 points)',
-      description: 'Highly imbalanced or inappropriate structure',
-      score: 3
-    }
-  ]
-};
-
-interface RiskModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  findings: string[];
-  recommendations: string[];
-  onUpdate: (score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => void;
-}
-
-// Update ClinicalRiskModal to use RiskFactorEditor correctly
-const ClinicalRiskModal: React.FC<RiskModalProps> = ({ isOpen, onClose, findings, recommendations, onUpdate }) => {
-  const [selectedScore, setSelectedScore] = useState<0 | 1 | 2 | 3>(0);
-  const [editedFindings, setEditedFindings] = useState<string[]>(findings);
-  const [editedRecommendations, setEditedRecommendations] = useState<string[]>(recommendations);
-
-  const handleSave = () => {
-    onUpdate(selectedScore, editedFindings, editedRecommendations);
-    onClose();
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-      <div className="relative top-20 mx-auto p-5 border w-4/5 shadow-lg rounded-md bg-white">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium text-gray-900">Clinical Compensation Risk</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+          <h3 className="text-lg font-medium text-gray-900">{context.practice.qualityMetrics.type === 'objective' ? 'Objective' : context.practice.qualityMetrics.type === 'subjective' ? 'Subjective' : 'Mixed'} Quality Metrics</h3>
+          <button onClick={() => onContextChange(context)} className="text-gray-400 hover:text-gray-500">
             <span className="sr-only">Close</span>
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2486,6 +2009,462 @@ const ClinicalRiskModal: React.FC<RiskModalProps> = ({ isOpen, onClose, findings
 
           <div className="flex justify-end space-x-3">
             <button
+              onClick={() => onContextChange(context)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Update RiskAnalysisSection to handle the updated editor
+const RiskAnalysisSection: React.FC<{
+  analysis: RiskAnalysis;
+  riskRules: RiskScoreRule[];
+  setRiskRules: (rules: RiskScoreRule[]) => void;
+  context: RiskFactorContext;
+  onContextUpdate: (context: RiskFactorContext) => void;
+  onRuleChange: (ruleId: string, updates: Partial<RiskScoreRule>) => void;
+  onAdjustmentAdd: (adjustment: RiskScoreAdjustment) => void;
+}> = ({ analysis, riskRules, setRiskRules, context, onContextUpdate, onRuleChange, onAdjustmentAdd }) => {
+  const [selectedFactor, setSelectedFactor] = useState<RiskFactor | null>(null);
+  const [factors, setFactors] = useState<RiskFactor[]>(analysis.factors.map(factor => ({
+    ...factor,
+    score: factor.score as 0 | 1 | 2 | 3,
+    riskLevel: factor.riskLevel as 'low' | 'medium' | 'high'
+  })));
+  const [totalScore, setTotalScore] = useState(analysis.totalScore);
+
+  // Calculate risk level based on total score
+  const calculateRiskLevel = (score: number): 'low' | 'medium' | 'high' | 'critical' => {
+    if (score >= 9) return 'critical';
+    if (score >= 6) return 'high';
+    if (score >= 3) return 'medium';
+    return 'low';
+  };
+
+  // Update total score whenever factors change
+  useEffect(() => {
+    const newTotalScore = factors.reduce((sum, factor) => sum + factor.score, 0);
+    setTotalScore(newTotalScore);
+  }, [factors]);
+
+  const handleFactorUpdate = (score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => {
+    if (!selectedFactor) return;
+    
+    const updatedFactors = factors.map(f => 
+      f.category === selectedFactor.category 
+        ? { 
+            ...f, 
+            score,
+            findings,
+            recommendations,
+            riskLevel: score <= 1 ? 'low' : score <= 2 ? 'medium' : 'high'
+          }
+        : f
+    );
+    setFactors(updatedFactors);
+    setSelectedFactor(null);
+  };
+
+  const renderFactorContent = (factor: RiskFactor) => {
+    const riskLevelClass = factor.riskLevel === 'high' ? 'bg-red-100 text-red-800' :
+      factor.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+      'bg-green-100 text-green-800';
+
+    return (
+      <div 
+        className="cursor-pointer group hover:bg-gray-50 transition-colors duration-150"
+        onClick={() => setSelectedFactor(factor)}
+      >
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 group-hover:text-blue-600">{factor.category}</h3>
+            <p className="text-sm text-gray-600">{factor.description}</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className={`px-2 py-1 rounded-full text-sm font-medium ${riskLevelClass}`}>
+              {factor.score} Points
+            </div>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <h4 className="text-sm font-medium text-gray-900">Findings:</h4>
+            <ul className="mt-1 list-disc list-inside text-sm text-gray-600">
+              {factor.findings.map((finding, i) => (
+                <li key={i}>{finding}</li>
+              ))}
+            </ul>
+          </div>
+          {factor.recommendations.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-900">Recommendations:</h4>
+              <ul className="mt-1 list-disc list-inside text-sm text-gray-600">
+                {factor.recommendations.map((rec, i) => (
+                  <li key={i}>{rec}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-light text-gray-900">FMV Risk Analysis</h2>
+        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+          calculateRiskLevel(totalScore) === 'critical' ? 'bg-red-100 text-red-800' :
+          calculateRiskLevel(totalScore) === 'high' ? 'bg-orange-100 text-orange-800' :
+          calculateRiskLevel(totalScore) === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+          'bg-green-100 text-green-800'
+        }`}>
+          {calculateRiskLevel(totalScore).charAt(0).toUpperCase() + calculateRiskLevel(totalScore).slice(1)} Risk
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+        {factors.map(factor => (
+          <div 
+            key={factor.category} 
+            className="border rounded-lg p-4 hover:shadow-md transition-shadow duration-150 hover:border-blue-200"
+          >
+            {renderFactorContent(factor)}
+          </div>
+        ))}
+      </div>
+
+      {selectedFactor && (
+        <RiskModal
+          isOpen={true}
+          onClose={() => setSelectedFactor(null)}
+          title={selectedFactor.category}
+          description={selectedFactor.description}
+          findings={selectedFactor.findings}
+          recommendations={selectedFactor.recommendations}
+          score={selectedFactor.score}
+          onUpdate={handleFactorUpdate}
+          riskOptions={riskOptions[selectedFactor.category]}
+        />
+      )}
+
+      <div className="border-t pt-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">Overall Assessment</h3>
+            <p className="text-sm text-gray-600">Based on comprehensive analysis of all risk factors</p>
+          </div>
+          <div className="text-2xl font-light text-gray-900">
+            {totalScore} / 12
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-4 gap-4">
+          <div className={`p-3 rounded-lg border ${
+            calculateRiskLevel(totalScore) === 'low' ? 'bg-green-50 border-green-200 ring-2 ring-green-500' : 'bg-green-50 border-green-200'
+          }`}>
+            <div className="text-sm font-medium text-green-800">Low Risk (0-3)</div>
+            <div className="text-xs text-green-600">Aligned with market standards</div>
+          </div>
+          <div className={`p-3 rounded-lg border ${
+            calculateRiskLevel(totalScore) === 'medium' ? 'bg-yellow-50 border-yellow-200 ring-2 ring-yellow-500' : 'bg-yellow-50 border-yellow-200'
+          }`}>
+            <div className="text-sm font-medium text-yellow-800">Medium Risk (4-6)</div>
+            <div className="text-xs text-yellow-600">Additional documentation needed</div>
+          </div>
+          <div className={`p-3 rounded-lg border ${
+            calculateRiskLevel(totalScore) === 'high' ? 'bg-orange-50 border-orange-200 ring-2 ring-orange-500' : 'bg-orange-50 border-orange-200'
+          }`}>
+            <div className="text-sm font-medium text-orange-800">High Risk (7-9)</div>
+            <div className="text-xs text-orange-600">Requires thorough justification</div>
+          </div>
+          <div className={`p-3 rounded-lg border ${
+            calculateRiskLevel(totalScore) === 'critical' ? 'bg-red-50 border-red-200 ring-2 ring-red-500' : 'bg-red-50 border-red-200'
+          }`}>
+            <div className="text-sm font-medium text-red-800">Critical Risk (10-12)</div>
+            <div className="text-xs text-red-600">Immediate review required</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Add RiskOption interface
+interface RiskOption {
+  label: string;
+  description: string;
+  score: 0 | 1 | 2 | 3;
+}
+
+// Add riskOptions definition
+const riskOptions: Record<string, RiskOption[]> = {
+  'Clinical Compensation Risk': [
+    { 
+      label: 'Low Risk (0 points)', 
+      description: 'Compensation below 50th percentile with matching productivity',
+      score: 0 
+    },
+    { 
+      label: 'Low-Medium Risk (1 point)', 
+      description: '50th-75th percentile with supporting productivity',
+      score: 1 
+    },
+    { 
+      label: 'Medium Risk (2 points)', 
+      description: '75th-90th percentile or misaligned productivity',
+      score: 2 
+    },
+    { 
+      label: 'High Risk (3 points)', 
+      description: 'Above 90th percentile or significantly misaligned productivity',
+      score: 3 
+    }
+  ],
+  'Market Factors Risk': [
+    {
+      label: 'Low Risk (0 points)',
+      description: 'Low demand specialty, low competition',
+      score: 0
+    },
+    {
+      label: 'Low-Medium Risk (1 point)',
+      description: 'Medium demand or moderate competition',
+      score: 1
+    },
+    {
+      label: 'Medium Risk (2 points)',
+      description: 'High demand or high competition',
+      score: 2
+    },
+    {
+      label: 'High Risk (3 points)',
+      description: 'High demand with high competition',
+      score: 3
+    }
+  ],
+  'Documentation Risk': [
+    {
+      label: 'Low Risk (0 points)',
+      description: 'Complete documentation with recent review',
+      score: 0
+    },
+    {
+      label: 'Low-Medium Risk (1 point)',
+      description: 'Minor gaps in documentation',
+      score: 1
+    },
+    {
+      label: 'Medium Risk (2 points)',
+      description: 'Significant documentation gaps',
+      score: 2
+    },
+    {
+      label: 'High Risk (3 points)',
+      description: 'Major documentation deficiencies',
+      score: 3
+    }
+  ],
+  'Structural Risk': [
+    {
+      label: 'Low Risk (0 points)',
+      description: 'Balanced compensation structure with appropriate incentives',
+      score: 0
+    },
+    {
+      label: 'Low-Medium Risk (1 point)',
+      description: 'Mostly balanced with minor concerns',
+      score: 1
+    },
+    {
+      label: 'Medium Risk (2 points)',
+      description: 'Imbalanced structure or misaligned incentives',
+      score: 2
+    },
+    {
+      label: 'High Risk (3 points)',
+      description: 'Highly imbalanced or inappropriate structure',
+      score: 3
+    }
+  ]
+};
+
+interface RiskModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  description: string;
+  findings: string[];
+  recommendations: string[];
+  score: 0 | 1 | 2 | 3;
+  onUpdate: (score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => void;
+  riskOptions: RiskOption[];
+}
+
+const RiskModal: React.FC<RiskModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  title,
+  description,
+  findings, 
+  recommendations, 
+  score,
+  onUpdate,
+  riskOptions
+}) => {
+  const [selectedScore, setSelectedScore] = useState<0 | 1 | 2 | 3>(score);
+  const [editedFindings, setEditedFindings] = useState<string[]>(findings);
+  const [editedRecommendations, setEditedRecommendations] = useState<string[]>(recommendations);
+
+  const handleSave = () => {
+    onUpdate(selectedScore, editedFindings, editedRecommendations);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+      <div className="relative top-20 mx-auto p-5 border w-4/5 shadow-lg rounded-md bg-white">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+            <p className="text-sm text-gray-600">{description}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+            <span className="sr-only">Close</span>
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Risk Score Selection */}
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Risk Assessment</h4>
+            <div className="space-y-4">
+              {riskOptions.map((option) => (
+                <div
+                  key={option.score}
+                  className={`relative flex items-start p-4 cursor-pointer rounded-lg border ${
+                    selectedScore === option.score 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:bg-gray-100'
+                  }`}
+                  onClick={() => setSelectedScore(option.score)}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-gray-900">
+                      {option.label}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-500">
+                      {option.description}
+                    </div>
+                  </div>
+                  <div className="ml-3 flex items-center h-5">
+                    <input
+                      type="radio"
+                      checked={selectedScore === option.score}
+                      onChange={() => setSelectedScore(option.score)}
+                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Findings */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Findings</h4>
+            <div className="space-y-2">
+              {editedFindings.map((finding, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={finding}
+                    onChange={(e) => {
+                      const newFindings = [...editedFindings];
+                      newFindings[index] = e.target.value;
+                      setEditedFindings(newFindings);
+                    }}
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => {
+                      const newFindings = editedFindings.filter((_, i) => i !== index);
+                      setEditedFindings(newFindings);
+                    }}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setEditedFindings([...editedFindings, ''])}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Add Finding
+              </button>
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-4">Recommendations</h4>
+            <div className="space-y-2">
+              {editedRecommendations.map((recommendation, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={recommendation}
+                    onChange={(e) => {
+                      const newRecommendations = [...editedRecommendations];
+                      newRecommendations[index] = e.target.value;
+                      setEditedRecommendations(newRecommendations);
+                    }}
+                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={() => {
+                      const newRecommendations = editedRecommendations.filter((_, i) => i !== index);
+                      setEditedRecommendations(newRecommendations);
+                    }}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setEditedRecommendations([...editedRecommendations, ''])}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Add Recommendation
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
@@ -2502,6 +2481,33 @@ const ClinicalRiskModal: React.FC<RiskModalProps> = ({ isOpen, onClose, findings
       </div>
     </div>
   );
+};
+
+type ReferralImpact = 'none' | 'low' | 'medium' | 'high';
+
+interface RiskFactorEditorProps {
+  context: RiskFactorContext;
+  onContextChange: (context: RiskFactorContext) => void;
+}
+
+const handleRiskFactorUpdate = (
+  updatedContext: RiskFactorContext,
+  score: number,
+  findings: string[],
+  recommendations: string[]
+): void => {
+  // Implementation
+};
+
+const handleRuleUpdate = (ruleId: string, updates: Partial<RiskScoreRule>): void => {
+  // Implementation
+};
+
+const updateRiskFactors = (factors: RiskFactor[]): void => {
+  setRiskFactors(factors.map(factor => ({
+    ...factor,
+    riskLevel: factor.riskLevel as 'low' | 'medium' | 'high'
+  })));
 };
 
 export default CompensationAnalysis; 

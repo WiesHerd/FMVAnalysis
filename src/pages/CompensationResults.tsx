@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import ReviewForm from '../components/ReviewForm';
 import CompensationAnalysis from '../components/CompensationAnalysis';
 
 interface CompensationComponent {
@@ -11,132 +12,168 @@ interface CompensationComponent {
   wrvus?: number;
 }
 
-interface CompensationResult {
-  provider: {
-    name: string;
-    specialty: string;
-    components: CompensationComponent[];
-  };
-}
-
 const CompensationResults: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
-  const [compensation, setCompensation] = useState<any>(null);
-  const [marketData, setMarketData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reviewCompleted, setReviewCompleted] = useState(false);
+  const [analysisData, setAnalysisData] = useState<any>(null);
+  const [marketData, setMarketData] = useState<any>(null);
+  const [providerId, setProviderId] = useState<string>('');
+  const [providerName, setProviderName] = useState<string>('');
+  const [riskLevel, setRiskLevel] = useState<'Low' | 'Medium' | 'High'>('Low');
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Get URL parameters
+        // Get provider ID from URL
         const params = new URLSearchParams(location.search);
-        const specialty = params.get('specialty');
         const id = params.get('id');
+        const name = decodeURIComponent(location.pathname.split('/').pop() || '');
+        const specialty = params.get('specialty');
 
-        if (!specialty || !id) {
-          setError('Missing specialty or provider ID in URL');
+        if (!id || !specialty) {
+          setError('Missing required URL parameters');
           setLoading(false);
           return;
         }
+
+        setProviderId(id);
+        setProviderName(name);
 
         // Load provider data from localStorage
-        const savedData = localStorage.getItem('employeeData');
-        if (!savedData) {
-          setError('No provider data found');
-          setLoading(false);
-          return;
-        }
-
-        const providers = JSON.parse(savedData);
+        const employeeData = localStorage.getItem('employeeData');
+        const providers = employeeData ? JSON.parse(employeeData) : [];
         const provider = providers.find((p: any) => p.employee_id === id);
-        
+
         if (!provider) {
-          setError(`Provider with ID ${id} not found`);
+          setError('Provider not found');
           setLoading(false);
           return;
         }
 
-        // Calculate total compensation
-        const total = provider.base_pay + provider.wrvu_incentive + 
-                    provider.quality_payments + provider.admin_payments;
-        
-        // Transform the data into the expected format
-        const transformedData = {
-          name: provider.full_name,
+        // Calculate total compensation and components
+        const total = provider.base_pay + provider.wrvu_incentive + provider.quality_payments + provider.admin_payments;
+        const perWrvu = provider.annual_wrvus > 0 ? total / provider.annual_wrvus : 0;
+
+        // Set up analysis data with actual compensation components
+        const analysis = {
+          providerName: provider.full_name,
           specialty: provider.specialty,
           total: total,
           wrvus: provider.annual_wrvus,
-          perWrvu: provider.conversion_factor,
-          componentTotals: {
+          perWrvu: perWrvu,
+          components: {
             baseTotal: provider.base_pay,
             productivityTotal: provider.wrvu_incentive,
             qualityTotal: provider.quality_payments,
             adminTotal: provider.admin_payments,
-            callTotal: 0
+            callTotal: 0 // Adding call coverage with default 0 since it's not in employee data
           }
         };
 
-        setCompensation(transformedData);
+        setAnalysisData(analysis);
 
-        // Load market data for the provider's specialty
-        const storedMarketData = localStorage.getItem('marketData');
-        if (!storedMarketData) {
-          setError('No market data found');
-          setLoading(false);
-          return;
-        }
-
-        const marketDataArray = JSON.parse(storedMarketData);
-        const specialtyData = marketDataArray.find((d: any) => 
-          d.specialty.toLowerCase().trim() === provider.specialty.toLowerCase().trim()
-        );
-
-        if (!specialtyData) {
-          setError(`No market data found for specialty: ${provider.specialty}`);
-          setLoading(false);
-          return;
-        }
-
-        const benchmarks = [
-          {
-            percentile: '25th',
-            tcc: specialtyData.tcc_25th,
-            wrvus: specialtyData.wrvu_25th,
-            conversionFactor: specialtyData.tcc_per_wrvu_25th
-          },
-          {
-            percentile: '50th',
-            tcc: specialtyData.tcc_50th,
-            wrvus: specialtyData.wrvu_50th,
-            conversionFactor: specialtyData.tcc_per_wrvu_50th
-          },
-          {
-            percentile: '75th',
-            tcc: specialtyData.tcc_75th,
-            wrvus: specialtyData.wrvu_75th,
-            conversionFactor: specialtyData.tcc_per_wrvu_75th
-          },
-          {
-            percentile: '90th',
-            tcc: specialtyData.tcc_90th,
-            wrvus: specialtyData.wrvu_90th,
-            conversionFactor: specialtyData.tcc_per_wrvu_90th
+        // Load market data
+        const marketDataStr = localStorage.getItem('marketData');
+        if (marketDataStr) {
+          const allMarketData = JSON.parse(marketDataStr);
+          console.log('All market data:', allMarketData);
+          console.log('Looking for specialty:', specialty);
+          
+          const matchingMarketData = allMarketData.find(
+            (m: any) => m.specialty.toLowerCase() === specialty.toLowerCase()
+          );
+          console.log('Found matching market data:', matchingMarketData);
+          
+          if (matchingMarketData) {
+            // Transform market data into benchmarks format
+            const benchmarks = [
+              {
+                percentile: '10th',
+                tcc: matchingMarketData.total_25th * 0.8,
+                wrvus: matchingMarketData.wrvus_25th * 0.8,
+                conversionFactor: matchingMarketData.cf_25th * 0.8
+              },
+              {
+                percentile: '25th',
+                tcc: matchingMarketData.total_25th,
+                wrvus: matchingMarketData.wrvus_25th,
+                conversionFactor: matchingMarketData.cf_25th
+              },
+              {
+                percentile: '50th',
+                tcc: matchingMarketData.total_50th,
+                wrvus: matchingMarketData.wrvus_50th,
+                conversionFactor: matchingMarketData.cf_50th
+              },
+              {
+                percentile: '75th',
+                tcc: matchingMarketData.total_75th,
+                wrvus: matchingMarketData.wrvus_75th,
+                conversionFactor: matchingMarketData.cf_75th
+              },
+              {
+                percentile: '90th',
+                tcc: matchingMarketData.total_90th,
+                wrvus: matchingMarketData.wrvus_90th,
+                conversionFactor: matchingMarketData.cf_90th
+              }
+            ];
+            console.log('Created benchmarks:', benchmarks);
+            setMarketData(benchmarks);
+          } else {
+            console.warn('No matching market data found for specialty:', specialty);
           }
-        ];
+        } else {
+          console.warn('No market data found in localStorage');
+        }
 
-        setMarketData(benchmarks);
+        // Load review status
+        const reviewsStr = localStorage.getItem('providerReviews');
+        if (reviewsStr) {
+          const reviews = JSON.parse(reviewsStr);
+          const review = reviews[id];
+          if (review) {
+            setReviewCompleted(review.status === 'Approved' || review.status === 'Rejected');
+            setRiskLevel(review.risk_level as 'Low' | 'Medium' | 'High');
+          }
+        }
+
         setLoading(false);
       } catch (error) {
         console.error('Error loading data:', error);
-        setError('Error loading data. Please try again.');
+        setError('Error loading provider data');
         setLoading(false);
       }
     };
 
     loadData();
   }, [location]);
+
+  const calculatePercentile = (value: number, benchmarks: number[]): number => {
+    const sorted = [...benchmarks].sort((a, b) => a - b);
+    const position = sorted.findIndex(b => value <= b);
+    if (position === -1) return 100;
+    if (position === 0) return 25;
+    const lowerPercentile = position * 25;
+    const upperPercentile = (position + 1) * 25;
+    const lowerValue = sorted[position - 1];
+    const upperValue = sorted[position];
+    return lowerPercentile + ((value - lowerValue) / (upperValue - lowerValue)) * 25;
+  };
+
+  const calculateRiskLevel = (tccPercentile: number, wrvuPercentile: number): 'Low' | 'Medium' | 'High' => {
+    if (tccPercentile > 90 || wrvuPercentile < 25) return 'High';
+    if (tccPercentile > 75 || wrvuPercentile < 50) return 'Medium';
+    return 'Low';
+  };
+
+  const handleReviewComplete = () => {
+    setReviewCompleted(true);
+    // Optionally refresh the page or update the UI
+    window.location.reload();
+  };
 
   if (loading) {
     return <div>Loading...</div>;
@@ -146,68 +183,20 @@ const CompensationResults: React.FC = () => {
     return <div className="text-red-600">{error}</div>;
   }
 
-  if (!compensation || !marketData.length) {
-    return <div>No data found. Please ensure market data is uploaded for {compensation?.specialty}.</div>;
-  }
+  return (
+    <div className="space-y-6">
+      <CompensationAnalysis compensation={analysisData} benchmarks={marketData} onUpdate={() => {}} />
 
-  // Transform components into the expected format
-  const transformedComponents = {
-    baseTotal: Number(compensation.componentTotals?.baseTotal) || 0,
-    productivityTotal: Number(compensation.componentTotals?.productivityTotal) || 0,
-    qualityTotal: Number(compensation.componentTotals?.qualityTotal) || 0,
-    adminTotal: Number(compensation.componentTotals?.adminTotal) || 0,
-    callTotal: Number(compensation.componentTotals?.callTotal) || 0
-  };
-
-  const analysisData = {
-    providerName: compensation.name || '',
-    specialty: compensation.specialty || '',
-    total: Number(compensation.total) || 0,
-    wrvus: Number(compensation.wrvus) || 0,
-    perWrvu: Number(compensation.perWrvu) || 0,
-    components: transformedComponents,
-    providerProfile: {
-      yearsExperience: 0,
-      specialCertifications: [],
-      uniqueSkills: []
-    },
-    qualityMetrics: {
-      type: 'mixed' as const,
-      metrics: []
-    },
-    marketData: {
-      specialtyDemand: 'medium' as const,
-      geographicRegion: '',
-      marketCompetition: 'medium' as const,
-      localMarketRates: 0,
-      recruitmentDifficulty: 'medium' as const,
-      costOfLiving: 100
-    },
-    documentation: {
-      methodology: '',
-      supportingDocs: [],
-      lastReviewDate: ''
-    },
-    compliance: {
-      starkCompliance: true,
-      aksPolicies: true,
-      referralAnalysis: {
-        hasReferralConnection: false,
-        referralImpact: 'none' as const
-      }
-    },
-    businessCase: {
-      needJustification: '',
-      strategicAlignment: '',
-      financialImpact: {
-        revenue: 0,
-        expenses: 0,
-        roi: 0
-      }
-    }
-  };
-
-  return <CompensationAnalysis compensation={analysisData} benchmarks={marketData} onUpdate={() => {}} />;
+      <section className="mt-8">
+        <ReviewForm
+          providerId={providerId}
+          providerName={providerName}
+          currentRiskLevel={riskLevel}
+          onReviewComplete={handleReviewComplete}
+        />
+      </section>
+    </div>
+  );
 };
 
 export default CompensationResults; 

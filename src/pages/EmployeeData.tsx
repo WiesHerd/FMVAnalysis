@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Table, Input, Button } from 'antd';
-import { SearchOutlined, UploadOutlined, PrinterOutlined } from '@ant-design/icons';
+import React, { useRef, useState, useEffect } from 'react';
+import { Table, Button, Input } from 'antd';
+import { UploadOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import Papa, { ParseResult } from 'papaparse';
-import '../styles/EmployeeData.css';
+import { formatCurrency, formatNumber } from '../utils/formatters';
 
 interface EmployeeData {
   employee_id: string;
@@ -15,16 +15,6 @@ interface EmployeeData {
   annual_wrvus: number;
   conversion_factor: number;
 }
-
-const formatCurrency = (value: number | null | undefined): string => {
-  if (value === null || value === undefined) return '-';
-  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-};
-
-const formatNumber = (value: number | null | undefined): string => {
-  if (value === null || value === undefined) return '-';
-  return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-};
 
 const EmployeeData: React.FC = () => {
   const [employeeData, setEmployeeData] = useState<EmployeeData[]>([]);
@@ -135,14 +125,16 @@ const EmployeeData: React.FC = () => {
           width: 150,
           align: 'left' as const,
           className: 'specialty-column',
-          fixed: 'left' as const
+          fixed: 'left' as const,
+          sorter: (a: EmployeeData, b: EmployeeData) => a.employee_id.localeCompare(b.employee_id)
         },
         {
           title: 'Name',
           dataIndex: 'full_name',
           key: 'full_name',
           width: 200,
-          align: 'left' as const
+          align: 'left' as const,
+          sorter: (a: EmployeeData, b: EmployeeData) => a.full_name.localeCompare(b.full_name)
         },
         {
           title: 'Specialty',
@@ -150,7 +142,8 @@ const EmployeeData: React.FC = () => {
           key: 'specialty',
           width: 200,
           align: 'left' as const,
-          className: 'section-end'
+          className: 'section-end',
+          sorter: (a: EmployeeData, b: EmployeeData) => a.specialty.localeCompare(b.specialty)
         }
       ]
     },
@@ -164,7 +157,8 @@ const EmployeeData: React.FC = () => {
           key: 'base_pay',
           width: 120,
           align: 'right' as const,
-          render: (value: number) => formatCurrency(value)
+          render: (value: number) => formatCurrency(value),
+          sorter: (a: EmployeeData, b: EmployeeData) => a.base_pay - b.base_pay
         },
         {
           title: 'wRVU Incentive',
@@ -172,7 +166,8 @@ const EmployeeData: React.FC = () => {
           key: 'wrvu_incentive',
           width: 120,
           align: 'right' as const,
-          render: (value: number) => formatCurrency(value)
+          render: (value: number) => formatCurrency(value),
+          sorter: (a: EmployeeData, b: EmployeeData) => a.wrvu_incentive - b.wrvu_incentive
         },
         {
           title: 'Quality',
@@ -180,7 +175,8 @@ const EmployeeData: React.FC = () => {
           key: 'quality_payments',
           width: 120,
           align: 'right' as const,
-          render: (value: number) => formatCurrency(value)
+          render: (value: number) => formatCurrency(value),
+          sorter: (a: EmployeeData, b: EmployeeData) => a.quality_payments - b.quality_payments
         },
         {
           title: 'Admin',
@@ -189,6 +185,7 @@ const EmployeeData: React.FC = () => {
           width: 120,
           align: 'right' as const,
           render: (value: number) => formatCurrency(value),
+          sorter: (a: EmployeeData, b: EmployeeData) => a.admin_payments - b.admin_payments,
           className: 'section-end'
         }
       ]
@@ -203,7 +200,8 @@ const EmployeeData: React.FC = () => {
           key: 'annual_wrvus',
           width: 120,
           align: 'right' as const,
-          render: (value: number) => formatNumber(value)
+          render: (value: number) => formatNumber(value),
+          sorter: (a: EmployeeData, b: EmployeeData) => a.annual_wrvus - b.annual_wrvus
         },
         {
           title: 'Conversion Factor',
@@ -211,113 +209,89 @@ const EmployeeData: React.FC = () => {
           key: 'conversion_factor',
           width: 120,
           align: 'right' as const,
-          render: (value: number) => value ? `$${value.toFixed(2)}` : '$0.00'
+          render: (value: number) => formatCurrency(value),
+          sorter: (a: EmployeeData, b: EmployeeData) => a.conversion_factor - b.conversion_factor
         }
       ]
     }
   ];
 
-  const filteredData = employeeData.filter(record =>
-    (record.full_name?.toLowerCase() || '').includes(searchText.toLowerCase()) ||
-    (record.specialty?.toLowerCase() || '').includes(searchText.toLowerCase()) ||
-    (record.employee_id?.toLowerCase() || '').includes(searchText.toLowerCase())
+  const filteredData = employeeData.filter(item =>
+    item.full_name.toLowerCase().includes(searchText.toLowerCase()) ||
+    item.employee_id.toLowerCase().includes(searchText.toLowerCase()) ||
+    item.specialty.toLowerCase().includes(searchText.toLowerCase())
   );
 
   return (
-    <div className="h-full">
-      <div className="print:hidden">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold text-gray-900">Provider Data Management</h2>
-          <div className="flex gap-4">
-            <Button
-              type="primary"
-              icon={<UploadOutlined />}
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center bg-blue-600 hover:bg-blue-700"
-            >
-              Upload Provider Data
-            </Button>
-            <Button
-              icon={<PrinterOutlined />}
-              onClick={() => window.print()}
-              className="flex items-center border-gray-300"
-            >
-              Print Provider Data
-            </Button>
-            <Button
-              onClick={() => {
-                setEmployeeData([]);
-                localStorage.removeItem('employeeData');
-                setUploadStatus(null);
-                setStatusMessage('');
-              }}
-              className="flex items-center border-gray-300"
-            >
-              Clear Data
-            </Button>
-          </div>
-        </div>
-
-        {uploadStatus && (
-          <div className="mb-4">
-            <div className={`px-4 py-2 rounded-md text-sm inline-flex items-center gap-2 ${
-              uploadStatus === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                uploadStatus === 'success' ? 'bg-green-500' : 'bg-red-500'
-              }`}></div>
-              {statusMessage}
+    <div className="space-y-6">
+      <h1 className="text-2xl font-semibold text-gray-900">Provider Data Management</h1>
+      
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Provider Data Preview</h2>
+              <p className="text-sm text-gray-500">Upload and manage provider data</p>
+            </div>
+            <div className="flex gap-4">
+              <Button
+                type="primary"
+                icon={<UploadOutlined />}
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-blue-500"
+              >
+                Upload Provider Data
+              </Button>
+              <Button
+                icon={<PrinterOutlined />}
+                className="border-gray-300"
+              >
+                Print Provider Data
+              </Button>
             </div>
           </div>
-        )}
 
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileInputChange}
-          accept=".csv"
-          className="hidden"
-        />
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-4 py-3 border-b border-gray-200 print:hidden">
-          <div className="flex justify-between items-center">
-            <div className="text-lg font-medium text-gray-900">Data Preview</div>
-            {employeeData.length > 0 && (
-              <Input
-                placeholder="Search providers..."
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)}
-                className="w-72"
-              />
-            )}
-          </div>
-        </div>
-
-        <div className="px-4 py-3">
-          {employeeData.length > 0 ? (
-            <Table
-              columns={columns}
-              dataSource={filteredData}
-              rowKey="employee_id"
-              pagination={false}
-              scroll={{ x: 'max-content', y: 'calc(100vh - 300px)' }}
-              bordered
-              size="middle"
-              className="employee-data-table"
+          <div className="flex justify-end mb-4">
+            <Input
+              placeholder="Search providers..."
+              prefix={<SearchOutlined className="text-gray-400" />}
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              style={{ width: 250 }}
+              className="rounded-md"
             />
-          ) : (
-            <div className="text-center py-12">
-              <div className="flex flex-col items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <div className="text-gray-500">No provider data loaded. Please upload a CSV file.</div>
+          </div>
+
+          {uploadStatus && (
+            <div className="mb-4">
+              <div className={`px-4 py-2 rounded-md text-sm inline-flex items-center gap-2 ${
+                uploadStatus === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  uploadStatus === 'success' ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                {statusMessage}
               </div>
             </div>
           )}
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileInputChange}
+            accept=".csv"
+            className="hidden"
+          />
+
+          <Table
+            columns={columns}
+            dataSource={filteredData}
+            rowKey="employee_id"
+            pagination={{ pageSize: 10 }}
+            bordered
+            className="provider-table"
+            scroll={{ x: 'max-content' }}
+          />
         </div>
       </div>
     </div>

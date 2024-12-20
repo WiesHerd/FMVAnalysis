@@ -38,30 +38,41 @@ interface Benchmark {
   tcc: number;
   wrvus: number;
   conversionFactor: number;
-  percentile: number;
+  percentile: string;
 }
 
 const getPercentilePosition = (value: number, type: 'tcc' | 'wrvus' | 'conversionFactor', benchmarks: Benchmark[]): number => {
-  const benchmarkData = benchmarks.filter(b => b[type] !== undefined);
+  const benchmarkData = benchmarks
+    .map(b => ({ value: b[type], percentile: parseInt(b.percentile) }))
+    .sort((a, b) => a.value - b.value);
+
   if (benchmarkData.length === 0) return 0;
 
-  // Sort benchmarks by value
-  const sortedValues = benchmarkData.map(b => b[type]).sort((a, b) => a - b);
-  
-  // Find position of value in sorted array
-  let position = 0;
-  for (let i = 0; i < sortedValues.length; i++) {
-    if (value <= sortedValues[i]) {
-      position = i;
-      break;
-    }
-    if (i === sortedValues.length - 1) {
-      position = sortedValues.length;
+  // If value is less than lowest benchmark
+  if (value <= benchmarkData[0].value) {
+    return benchmarkData[0].percentile * (value / benchmarkData[0].value);
+  }
+
+  // If value is greater than highest benchmark
+  if (value >= benchmarkData[benchmarkData.length - 1].value) {
+    return benchmarkData[benchmarkData.length - 1].percentile;
+  }
+
+  // Find the two benchmarks to interpolate between
+  for (let i = 0; i < benchmarkData.length - 1; i++) {
+    const lower = benchmarkData[i];
+    const upper = benchmarkData[i + 1];
+    
+    if (value >= lower.value && value <= upper.value) {
+      // Linear interpolation formula: percentile = p1 + (value - v1) * (p2 - p1) / (v2 - v1)
+      return lower.percentile + 
+        (value - lower.value) * 
+        (upper.percentile - lower.percentile) / 
+        (upper.value - lower.value);
     }
   }
 
-  // Calculate percentile (0-100)
-  return (position / sortedValues.length) * 100;
+  return 0; // Fallback
 };
 
 const CompensationResults: React.FC<CompensationResultsProps> = ({ compensation, benchmarks }) => {
