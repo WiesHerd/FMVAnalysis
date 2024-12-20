@@ -1431,21 +1431,21 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
         <div className="relative max-w-3xl mx-auto">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center space-x-3 mb-4">
-              <div className="h-[1px] w-12 bg-blue-200"></div>
-              <span className="text-xs font-medium tracking-[0.2em] text-blue-600">FAIR MARKET VALUE ANALYSIS</span>
-              <div className="h-[1px] w-12 bg-blue-200"></div>
-            </div>
-            
             <h1 className="text-4xl font-light text-gray-900 mb-3">
               {compensation.providerName || 'Provider'}
             </h1>
             
-            <div className="inline-block">
-              <div className="flex items-center justify-center space-x-2">
-                <div className="text-base text-gray-600">
-                  <span className="font-normal">{compensation.specialty || 'Not Specified'}</span>
-                </div>
+            <div className="mb-4">
+              <div className="text-base text-gray-600">
+                <span className="font-normal">{compensation.specialty || 'Not Specified'}</span>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="inline-flex items-center justify-center space-x-3">
+                <div className="h-[1px] w-12 bg-blue-200"></div>
+                <span className="text-xs font-medium tracking-[0.2em] text-blue-600">FAIR MARKET VALUE ANALYSIS</span>
+                <div className="h-[1px] w-12 bg-blue-200"></div>
               </div>
             </div>
           </div>
@@ -1490,10 +1490,10 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-4 gap-4">
             {/* Base Salary */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Base Salary</h3>
                   {isEditingComponents ? (
@@ -1509,7 +1509,7 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
                       />
                     </div>
                   ) : (
-                    <div className="mt-1 text-3xl font-light text-gray-900">${components.baseTotal.toLocaleString()}</div>
+                    <div className="mt-1 text-2xl font-light text-gray-900">${components.baseTotal.toLocaleString()}</div>
                   )}
                 </div>
                 <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
@@ -1521,8 +1521,8 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
             </div>
 
             {/* wRVU Incentive */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">wRVU Incentive</h3>
                   {isEditingComponents ? (
@@ -1538,7 +1538,7 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
                       />
                     </div>
                   ) : (
-                    <div className="mt-1 text-3xl font-light text-gray-900">${components.productivityTotal.toLocaleString()}</div>
+                    <div className="mt-1 text-2xl font-light text-gray-900">${components.productivityTotal.toLocaleString()}</div>
                   )}
                 </div>
                 <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
@@ -1550,8 +1550,8 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
             </div>
 
             {/* Call Coverage */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Call Coverage</h3>
                   {isEditingComponents ? (
@@ -1567,7 +1567,7 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
                       />
                     </div>
                   ) : (
-                    <div className="mt-1 text-3xl font-light text-gray-900">${components.callTotal.toLocaleString()}</div>
+                    <div className="mt-1 text-2xl font-light text-gray-900">${components.callTotal.toLocaleString()}</div>
                   )}
                 </div>
                 <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
@@ -1579,8 +1579,8 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
             </div>
 
             {/* Administrative */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Administrative</h3>
                   {isEditingComponents ? (
@@ -1596,7 +1596,7 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
                       />
                     </div>
                   ) : (
-                    <div className="mt-1 text-3xl font-light text-gray-900">${components.adminTotal.toLocaleString()}</div>
+                    <div className="mt-1 text-2xl font-light text-gray-900">${components.adminTotal.toLocaleString()}</div>
                   )}
                 </div>
                 <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">

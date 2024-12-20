@@ -1,0 +1,5 @@
+[33m47ce4f6e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mui-improvements[m[33m)[m UI improvements: Removed redundant headers and orange button, updated risk analysis styling
+[33m7a2af0c3[m Implement risk assessment system with scoring and findings tracking. Add RiskModal component for risk factor updates. Update CompensationResults to integrate risk assessment functionality.
+[33m3f70ed0a[m Add total risk score column to Provider FMV Status table. Enhanced risk assessment visibility by displaying numerical risk scores with color-coded indicators. Improved sorting and filtering capabilities for better risk management.
+[33m4e3e5d41[m Added search functionality and table borders to FMV Review Dashboard. Fixed individual dashboard data loading and error handling. Added formatter utilities for consistent number formatting.
+[33mbf83c8cd[m Implemented risk point selectors in Clinical Compensation Risk modal, fixed modal rendering, and improved UI consistency
