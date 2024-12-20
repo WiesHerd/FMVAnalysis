@@ -1,72 +1,18 @@
 // src/components/MarketDataUpload.tsx
 import React, { useRef, useState } from 'react';
-import { Card } from './ui';
+import { Card, Table, Button, Input } from 'antd';
+import { UploadOutlined, PrinterOutlined } from '@ant-design/icons';
 
-interface MarketData {
-  specialty: string;
-  year: number;
-  p10_total: number;
-  p25_total: number;
-  p50_total: number;
-  p75_total: number;
-  p90_total: number;
-  p10_wrvu: number;
-  p25_wrvu: number;
-  p50_wrvu: number;
-  p75_wrvu: number;
-  p90_wrvu: number;
-  p10_cf: number;
-  p25_cf: number;
-  p50_cf: number;
-  p75_cf: number;
-  p90_cf: number;
-}
+const { Search } = Input;
 
 interface MarketDataUploadProps {
-  onDataUploaded: (data: MarketData[]) => void;
+  onDataUploaded: (data: any[]) => void;
 }
 
-const REQUIRED_COLUMNS = [
-  'specialty',
-  'p10_total', 'p25_total', 'p50_total', 'p75_total', 'p90_total',
-  'p10_wrvu', 'p25_wrvu', 'p50_wrvu', 'p75_wrvu', 'p90_wrvu',
-  'p10_cf', 'p25_cf', 'p50_cf', 'p75_cf', 'p90_cf'
-];
-
-const MarketDataUpload = ({ onDataUploaded }: MarketDataUploadProps) => {
+const MarketDataUpload: React.FC<MarketDataUploadProps> = ({ onDataUploaded }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  const validateHeaders = (headers: string[]): string | null => {
-    const missingColumns = REQUIRED_COLUMNS.filter(col => 
-      !headers.map(h => h.toLowerCase().trim()).includes(col.toLowerCase())
-    );
-    
-    if (missingColumns.length > 0) {
-      return `Missing required columns: ${missingColumns.join(', ')}`;
-    }
-    return null;
-  };
-
-  const validateDataTypes = (record: any): string | null => {
-    if (typeof record.specialty !== 'string' || record.specialty.trim() === '') {
-      return 'Specialty must be a non-empty string';
-    }
-
-    const numericFields = REQUIRED_COLUMNS.filter(col => col !== 'specialty');
-    for (const field of numericFields) {
-      const value = record[field];
-      if (typeof value !== 'number' || isNaN(value)) {
-        return `${field} must be a valid number`;
-      }
-      if (value < 0) {
-        return `${field} cannot be negative`;
-      }
-    }
-
-    return null;
-  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -143,58 +89,181 @@ const MarketDataUpload = ({ onDataUploaded }: MarketDataUploadProps) => {
     reader.readAsText(file);
   };
 
+  const columns = [
+    {
+      title: 'Specialty',
+      dataIndex: 'specialty',
+      key: 'specialty',
+      width: 150,
+    },
+    {
+      title: 'Total Cash Compensation',
+      children: [
+        {
+          title: '25th',
+          dataIndex: 'p25_total',
+          key: 'p25_total',
+          width: 120,
+          render: (value: number) => `$${value.toLocaleString()}`,
+        },
+        {
+          title: '50th',
+          dataIndex: 'p50_total',
+          key: 'p50_total',
+          width: 120,
+          render: (value: number) => `$${value.toLocaleString()}`,
+        },
+        {
+          title: '75th',
+          dataIndex: 'p75_total',
+          key: 'p75_total',
+          width: 120,
+          render: (value: number) => `$${value.toLocaleString()}`,
+        },
+        {
+          title: '90th',
+          dataIndex: 'p90_total',
+          key: 'p90_total',
+          width: 120,
+          render: (value: number) => `$${value.toLocaleString()}`,
+        },
+      ],
+    },
+    {
+      title: 'Work RVUs',
+      children: [
+        {
+          title: '25th',
+          dataIndex: 'p25_wrvu',
+          key: 'p25_wrvu',
+          width: 100,
+          render: (value: number) => value.toLocaleString(),
+        },
+        {
+          title: '50th',
+          dataIndex: 'p50_wrvu',
+          key: 'p50_wrvu',
+          width: 100,
+          render: (value: number) => value.toLocaleString(),
+        },
+        {
+          title: '75th',
+          dataIndex: 'p75_wrvu',
+          key: 'p75_wrvu',
+          width: 100,
+          render: (value: number) => value.toLocaleString(),
+        },
+        {
+          title: '90th',
+          dataIndex: 'p90_wrvu',
+          key: 'p90_wrvu',
+          width: 100,
+          render: (value: number) => value.toLocaleString(),
+        },
+      ],
+    },
+    {
+      title: 'Conversion Factor',
+      children: [
+        {
+          title: '25th',
+          dataIndex: 'p25_cf',
+          key: 'p25_cf',
+          width: 100,
+          render: (value: number) => `$${value.toFixed(2)}`,
+        },
+        {
+          title: '50th',
+          dataIndex: 'p50_cf',
+          key: 'p50_cf',
+          width: 100,
+          render: (value: number) => `$${value.toFixed(2)}`,
+        },
+        {
+          title: '75th',
+          dataIndex: 'p75_cf',
+          key: 'p75_cf',
+          width: 100,
+          render: (value: number) => `$${value.toFixed(2)}`,
+        },
+        {
+          title: '90th',
+          dataIndex: 'p90_cf',
+          key: 'p90_cf',
+          width: 100,
+          render: (value: number) => `$${value.toFixed(2)}`,
+        },
+      ],
+    },
+  ];
+
   return (
-    <Card title="Market Data Upload">
-      <div className="space-y-4">
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Upload Market Benchmark Data</h4>
-          <p className="text-xs text-gray-500 mb-4">
-            Upload a CSV file containing market benchmarks with the following required columns:
-            <br />
-            - specialty
-            <br />
-            - Percentiles (10th, 25th, 50th, 75th, 90th) for:
-            <br />
-            &nbsp;&nbsp;• Total Compensation (p10_total, p25_total, etc.)
-            <br />
-            &nbsp;&nbsp;• Work RVUs (p10_wrvu, p25_wrvu, etc.)
-            <br />
-            &nbsp;&nbsp;• Conversion Factors (p10_cf, p25_cf, etc.)
-          </p>
+    <div className="max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-medium text-gray-900">Market Data Management</h1>
+        <div className="flex gap-4">
+          <Button
+            type="primary"
+            icon={<UploadOutlined />}
+            onClick={() => fileInputRef.current?.click()}
+            className="bg-blue-500"
+          >
+            Upload Market Data
+          </Button>
+          <Button
+            icon={<PrinterOutlined />}
+            className="border-gray-300"
+          >
+            Print Market Data
+          </Button>
+        </div>
+      </div>
+
+      <Card className="shadow-sm">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <div className="text-base font-medium">Data Preview</div>
+            <div className="text-sm text-gray-500 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              Loaded market data for all specialties
+            </div>
+          </div>
+          <Search
+            placeholder="Search specialties..."
+            style={{ width: 250 }}
+          />
         </div>
 
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          accept=".csv"
+          className="hidden"
+        />
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+          <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
             {success}
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept=".csv"
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Choose File
-          </button>
-          <span className="text-sm text-gray-500">
-            {fileInputRef.current?.files?.[0]?.name || 'No file chosen'}
-          </span>
-        </div>
-      </div>
-    </Card>
+        <Table
+          columns={columns}
+          dataSource={[]}
+          size="middle"
+          scroll={{ x: 'max-content' }}
+          pagination={{ pageSize: 10 }}
+          bordered
+        />
+      </Card>
+    </div>
   );
 };
 

@@ -1,0 +1,179 @@
+/* General styles */
+.market-data-container {
+  width: 100%;
+  max-width: 100%;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Table styles */
+.market-data-table {
+  width: 100%;
+}
+
+.market-data-table .ant-table {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.market-data-table .ant-table-container {
+  border-left: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.market-data-table .ant-table-thead > tr > th {
+  background-color: #e2e8f0 !important;
+  color: #1f2937;
+  font-weight: 600;
+  text-align: center;
+  padding: 12px 8px;
+  border-bottom: 2px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.market-data-table .ant-table-thead > tr:first-child > th {
+  background-color: #cbd5e1 !important;
+  color: #1f2937;
+  font-weight: 600;
+  border-top: none;
+}
+
+.market-data-table .ant-table-thead > tr:first-child > th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.market-data-table .ant-table-thead > tr:first-child > th:last-child {
+  border-top-right-radius: 8px;
+}
+
+.market-data-table .ant-table-thead > tr > th.ant-table-cell-fix-left {
+  background-color: #cbd5e1 !important;
+}
+
+.market-data-table .specialty-column {
+  background-color: white !important;
+  font-weight: 500 !important;
+  color: #1f2937 !important;
+  border-right: 2px solid #e5e7eb !important;
+}
+
+.market-data-table .ant-table-tbody > tr > td {
+  padding: 12px 8px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.market-data-table .ant-table-tbody > tr:hover > td {
+  background-color: #f8fafc !important;
+}
+
+.market-data-table .ant-table-tbody > tr > td.specialty-column {
+  font-weight: 500;
+  border-right: 2px solid #e5e7eb;
+}
+
+.market-data-table td.section-end,
+.market-data-table th.section-end {
+  border-right: 2px solid #e5e7eb !important;
+}
+
+.market-data-table .ant-table-cell {
+  transition: background-color 0.2s;
+}
+
+.market-data-table .ant-table-row:hover .ant-table-cell {
+  background-color: #f8fafc !important;
+}
+
+.market-data-table .ant-table-tbody > tr.ant-table-row:hover > td {
+  background-color: #f8fafc;
+}
+
+.market-data-table .ant-table-tbody > tr > td.ant-table-cell-fix-left {
+  background-color: white;
+  box-shadow: 6px 0 6px -4px rgba(0, 0, 0, 0.05);
+}
+
+.market-data-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left {
+  background-color: #f8fafc !important;
+}
+
+/* Scrollbar styles */
+.market-data-table .ant-table-body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.market-data-table .ant-table-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.market-data-table .ant-table-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.market-data-table .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Print styles */
+@media print {
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  @page {
+    margin: 0.5cm;
+    size: landscape;
+  }
+
+  .market-data-table {
+    page-break-inside: auto;
+    width: 100% !important;
+  }
+
+  .market-data-table .ant-table {
+    font-size: 10pt;
+    width: 100% !important;
+  }
+
+  .market-data-table .ant-table-thead {
+    display: table-header-group;
+  }
+
+  .market-data-table .ant-table-thead > tr > th {
+    background-color: #e5e7eb !important;
+    color: black !important;
+    font-weight: bold;
+    border: 1px solid #000;
+  }
+
+  .market-data-table .ant-table-tbody > tr {
+    page-break-inside: avoid;
+  }
+
+  .market-data-table .ant-table-tbody > tr > td {
+    border: 1px solid #000;
+  }
+
+  .market-data-table .ant-table-cell-fix-left,
+  .market-data-table .ant-table-cell-fix-right {
+    position: static !important;
+  }
+
+  .market-data-table .ant-table-container {
+    width: 100% !important;
+  }
+
+  .market-data-table .ant-table-body {
+    overflow: visible !important;
+  }
+} 

@@ -35,6 +35,35 @@ const defaultDescriptions = {
   custom: "Custom compensation component"
 };
 
+const formatCurrency = (value: string | number): string => {
+  if (!value) return '';
+  const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]+/g, '')) : value;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(num);
+};
+
+const formatDecimal = (value: string | number): string => {
+  if (!value) return '';
+  const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]+/g, '')) : value;
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(num);
+};
+
+const formatNumber = (value: string | number): string => {
+  if (!value) return '';
+  const num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]+/g, '')) : value;
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(num);
+};
+
 const CompensationCalculator: React.FC = () => {
   const navigate = useNavigate();
   const [specialty, setSpecialty] = useState<string>('');
@@ -317,7 +346,7 @@ const CompensationCalculator: React.FC = () => {
                   type="primary" 
                   icon={<PlusOutlined />}
                   onClick={handleAddComponent}
-                  style={{ backgroundColor: '#1a3353' }}
+                  className="bg-blue-600 hover:bg-blue-700 border-none flex items-center"
                 >
                   Add Component
                 </Button>
@@ -365,38 +394,38 @@ const CompensationCalculator: React.FC = () => {
                       <div>
                         <Text className="block text-sm text-gray-500 mb-1">Amount</Text>
                         <Input
-                          type="number"
-                          value={comp.amount}
-                          onChange={e => handleComponentChange(comp.id, 'amount', Number(e.target.value))}
-                          prefix="$"
+                          value={formatCurrency(comp.amount)}
+                          onChange={e => {
+                            const value = e.target.value.replace(/[^0-9.]/g, '');
+                            handleComponentChange(comp.id, 'amount', Number(value));
+                          }}
                           style={{ 
                             width: '100%',
                             height: '32px',
                             padding: '4px 11px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            textAlign: 'right',
+                            fontFamily: 'monospace'
                           }}
                           className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <div>
                         <Text className="block text-sm text-gray-500 mb-1">FTE</Text>
                         <Input
-                          type="number"
-                          value={comp.fte.toFixed(2)}
+                          value={formatDecimal(comp.fte)}
                           onChange={e => {
-                            const value = Math.min(1, Math.max(0, Number(e.target.value)));
+                            const value = Math.min(1, Math.max(0, Number(e.target.value.replace(/[^0-9.]/g, ''))));
                             handleComponentChange(comp.id, 'fte', value);
                           }}
-                          min={0}
-                          max={1}
-                          step={0.01}
                           style={{ 
-                            width: '80px',
+                            width: '100%',
                             height: '32px',
                             padding: '4px 8px',
                             fontSize: '14px',
-                            textAlign: 'right'
+                            textAlign: 'right',
+                            fontFamily: 'monospace'
                           }}
                           className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
@@ -407,14 +436,18 @@ const CompensationCalculator: React.FC = () => {
                           <div>
                             <Text className="block text-sm text-gray-500 mb-1">Annual wRVUs</Text>
                             <Input
-                              type="number"
-                              value={comp.wrvus}
-                              onChange={e => handleComponentChange(comp.id, 'wrvus', Number(e.target.value))}
+                              value={formatNumber(comp.wrvus)}
+                              onChange={e => {
+                                const value = e.target.value.replace(/[^0-9.]/g, '');
+                                handleComponentChange(comp.id, 'wrvus', Number(value));
+                              }}
                               style={{ 
                                 width: '100%',
                                 height: '32px',
                                 padding: '4px 11px',
-                                fontSize: '14px'
+                                fontSize: '14px',
+                                textAlign: 'right',
+                                fontFamily: 'monospace'
                               }}
                               className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             />
@@ -422,17 +455,18 @@ const CompensationCalculator: React.FC = () => {
                           <div>
                             <Text className="block text-sm text-gray-500 mb-1">Conversion Factor</Text>
                             <Input
-                              type="number"
-                              value={comp.conversion_factor}
-                              onChange={e => handleComponentChange(comp.id, 'conversion_factor', Number(e.target.value))}
-                              prefix="$"
-                              step="0.01"
-                              min="0"
+                              value={formatCurrency(comp.conversion_factor)}
+                              onChange={e => {
+                                const value = e.target.value.replace(/[^0-9.]/g, '');
+                                handleComponentChange(comp.id, 'conversion_factor', Number(value));
+                              }}
                               style={{ 
                                 width: '100%',
                                 height: '32px',
                                 padding: '4px 11px',
-                                fontSize: '14px'
+                                fontSize: '14px',
+                                textAlign: 'right',
+                                fontFamily: 'monospace'
                               }}
                               className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             />
@@ -543,16 +577,11 @@ const CompensationCalculator: React.FC = () => {
               type="primary"
               onClick={handleCalculate}
               disabled={!specialty || !provider}
-              style={{ 
-                width: '100%',
-                height: '40px',
-                fontSize: '16px',
-                backgroundColor: '#1a3353',
-                color: 'white',
-                fontWeight: 500,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+              className="w-full h-10 text-base bg-blue-600 hover:bg-blue-700 border-none font-medium flex items-center justify-center text-white"
+              style={{
+                backgroundColor: '#2563eb',
+                borderColor: '#2563eb',
+                color: 'white'
               }}
             >
               Calculate FMV Analysis

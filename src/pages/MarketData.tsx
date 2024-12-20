@@ -1,66 +1,65 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, Card, Table, Input, Button, Alert } from 'antd';
-import { UploadOutlined, PrinterOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { Table, Input, Button } from 'antd';
+import { SearchOutlined, UploadOutlined, PrinterOutlined } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
 import Papa from 'papaparse';
+import '../styles/MarketData.css';
 
-interface MarketDataRecord {
+interface MarketDataRow {
   specialty: string;
-  percentile_25th: number;
-  percentile_50th: number;
-  percentile_75th: number;
-  percentile_90th: number;
-  wrvu_25th: number;
-  wrvu_50th: number;
-  wrvu_75th: number;
-  wrvu_90th: number;
+  total_25th: number;
+  total_50th: number;
+  total_75th: number;
+  total_90th: number;
+  wrvus_25th: number;
+  wrvus_50th: number;
+  wrvus_75th: number;
+  wrvus_90th: number;
   cf_25th: number;
   cf_50th: number;
   cf_75th: number;
   cf_90th: number;
 }
 
-const formatCurrency = (value: number | null | undefined): string => {
-  if (value === null || value === undefined) return '-';
-  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-};
-
-const formatNumber = (value: number | null | undefined): string => {
-  if (value === null || value === undefined) return '-';
-  return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-};
-
-const formatCF = (value: number | null | undefined): string => {
-  if (value === null || value === undefined) return '-';
-  return `$${value.toFixed(2)}`;
-};
-
 const MarketData: React.FC = () => {
-  const [data, setData] = useState<MarketDataRecord[]>([]);
+  const [data, setData] = useState<MarketDataRow[]>([]);
   const [searchText, setSearchText] = useState('');
   const [uploadStatus, setUploadStatus] = useState<'success' | 'error' | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const storedData = localStorage.getItem('marketData');
     if (storedData) {
       try {
-        const parsed = JSON.parse(storedData);
-        setData(parsed);
-        setUploadStatus('success');
-        setStatusMessage('Loaded records from storage');
+        const parsedData = JSON.parse(storedData);
+        setData(parsedData);
+        console.log('Loaded stored data:', parsedData);
       } catch (error) {
         console.error('Error loading stored data:', error);
-        setUploadStatus('error');
-        setStatusMessage('Error loading stored data');
       }
     }
   }, []);
 
   const handleFileUpload = (file: File) => {
+    setUploadStatus(null);
+    setStatusMessage('');
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setUploadStatus('error');
+      setStatusMessage('Please upload a CSV file');
+      return false;
+    }
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
+        console.log('CSV Parse Results:', results);
+        if (results.data[0]) {
+          console.log('CSV Column Headers:', Object.keys(results.data[0] as object));
+        }
+        
         if (results.errors.length > 0) {
           console.error('CSV parsing errors:', results.errors);
           setUploadStatus('error');
@@ -69,33 +68,48 @@ const MarketData: React.FC = () => {
         }
 
         try {
-          console.log('Raw CSV data:', results.data[0]); // Debug log
+          const parsedData = results.data.map((row: any) => {
+            console.log('Raw row data:', row);
+            // Remove any $ signs and commas from values before parsing
+            const cleanValue = (value: string | undefined) => {
+              if (!value) return 0;
+              const cleanStr = value.toString().replace(/[$,]/g, '');
+              return parseFloat(cleanStr) || 0;
+            };
 
-          const parsedData = results.data.map((row: any) => ({
-            specialty: row.specialty?.trim() || '',
-            percentile_25th: parseFloat(row.p25_total) || 0,
-            percentile_50th: parseFloat(row.p50_total) || 0,
-            percentile_75th: parseFloat(row.p75_total) || 0,
-            percentile_90th: parseFloat(row.p90_total) || 0,
-            wrvu_25th: parseFloat(row.p25_wrvu) || 0,
-            wrvu_50th: parseFloat(row.p50_wrvu) || 0,
-            wrvu_75th: parseFloat(row.p75_wrvu) || 0,
-            wrvu_90th: parseFloat(row.p90_wrvu) || 0,
-            cf_25th: parseFloat(row.p25_cf) || 0,
-            cf_50th: parseFloat(row.p50_cf) || 0,
-            cf_75th: parseFloat(row.p75_cf) || 0,
-            cf_90th: parseFloat(row.p90_cf) || 0,
-          }));
+            return {
+              specialty: row.specialty || '',
+              // Total Cash Compensation
+              total_25th: cleanValue(row.p25_total),
+              total_50th: cleanValue(row.p50_total),
+              total_75th: cleanValue(row.p75_total),
+              total_90th: cleanValue(row.p90_total),
+              // wRVUs
+              wrvus_25th: cleanValue(row.p25_wrvu),
+              wrvus_50th: cleanValue(row.p50_wrvu),
+              wrvus_75th: cleanValue(row.p75_wrvu),
+              wrvus_90th: cleanValue(row.p90_wrvu),
+              // Conversion Factors
+              cf_25th: cleanValue(row.p25_cf),
+              cf_50th: cleanValue(row.p50_cf),
+              cf_75th: cleanValue(row.p75_cf),
+              cf_90th: cleanValue(row.p90_cf),
+            };
+          });
 
-          console.log('Parsed data:', parsedData[0]); // Debug log
+          console.log('Parsed data:', parsedData);
 
-          // Validate required fields
-          const validData = parsedData.filter(record => 
-            record.specialty && 
-            !isNaN(record.percentile_50th) && 
-            !isNaN(record.wrvu_50th) && 
-            !isNaN(record.cf_50th)
-          );
+          const validData = parsedData.filter(record => {
+            const isValid = record.specialty && 
+              (!isNaN(record.total_50th) || !isNaN(record.total_25th) || !isNaN(record.total_75th) || !isNaN(record.total_90th));
+            
+            if (!isValid) {
+              console.log('Invalid record:', record);
+            }
+            return isValid;
+          });
+
+          console.log('Valid data:', validData);
 
           if (validData.length === 0) {
             setUploadStatus('error');
@@ -103,43 +117,8 @@ const MarketData: React.FC = () => {
             return;
           }
 
-          // Transform data into the format needed for benchmarks
-          const transformedData = validData.map(record => ({
-            specialty: record.specialty,
-            benchmarks: [
-              {
-                percentile: '25th',
-                tcc: record.percentile_25th,
-                wrvus: record.wrvu_25th,
-                conversionFactor: record.cf_25th,
-                clinicalFte: 1.0
-              },
-              {
-                percentile: '50th',
-                tcc: record.percentile_50th,
-                wrvus: record.wrvu_50th,
-                conversionFactor: record.cf_50th,
-                clinicalFte: 1.0
-              },
-              {
-                percentile: '75th',
-                tcc: record.percentile_75th,
-                wrvus: record.wrvu_75th,
-                conversionFactor: record.cf_75th,
-                clinicalFte: 1.0
-              },
-              {
-                percentile: '90th',
-                tcc: record.percentile_90th,
-                wrvus: record.wrvu_90th,
-                conversionFactor: record.cf_90th,
-                clinicalFte: 1.0
-              }
-            ]
-          }));
-
           setData(validData);
-          localStorage.setItem('marketData', JSON.stringify(transformedData));
+          localStorage.setItem('marketData', JSON.stringify(validData));
           setUploadStatus('success');
           setStatusMessage(`Loaded ${validData.length} records from CSV`);
         } catch (error) {
@@ -157,84 +136,97 @@ const MarketData: React.FC = () => {
     return false;
   };
 
-  const columns = [
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  const columns: ColumnsType<MarketDataRow> = [
     {
       title: 'Specialty',
       dataIndex: 'specialty',
       key: 'specialty',
+      width: 250,
       fixed: 'left',
-      width: 180,
-      className: 'specialty-column'
+      className: 'specialty-column',
     },
     {
       title: 'Total Cash Compensation',
       children: [
         {
           title: '25th',
-          dataIndex: 'percentile_25th',
-          key: 'percentile_25th',
-          width: 110,
-          render: (value: number) => formatCurrency(value)
+          dataIndex: 'total_25th',
+          key: 'total_25th',
+          width: 130,
+          align: 'right',
+          render: (value: number) => value ? `$${value.toLocaleString()}` : '-',
         },
         {
           title: '50th',
-          dataIndex: 'percentile_50th',
-          key: 'percentile_50th',
-          width: 110,
-          render: (value: number) => formatCurrency(value)
+          dataIndex: 'total_50th',
+          key: 'total_50th',
+          width: 130,
+          align: 'right',
+          render: (value: number) => value ? `$${value.toLocaleString()}` : '-',
         },
         {
           title: '75th',
-          dataIndex: 'percentile_75th',
-          key: 'percentile_75th',
-          width: 110,
-          render: (value: number) => formatCurrency(value)
+          dataIndex: 'total_75th',
+          key: 'total_75th',
+          width: 130,
+          align: 'right',
+          render: (value: number) => value ? `$${value.toLocaleString()}` : '-',
         },
         {
           title: '90th',
-          dataIndex: 'percentile_90th',
-          key: 'percentile_90th',
-          width: 110,
-          render: (value: number) => formatCurrency(value),
-          onCell: () => ({ 'data-key': 'section-end' }),
-          onHeaderCell: () => ({ 'data-key': 'section-end' })
-        }
-      ]
+          dataIndex: 'total_90th',
+          key: 'total_90th',
+          width: 130,
+          align: 'right',
+          render: (value: number) => value ? `$${value.toLocaleString()}` : '-',
+          className: 'section-end',
+        },
+      ],
     },
     {
-      title: 'Work RVUs',
+      title: 'wRVUs',
       children: [
         {
           title: '25th',
-          dataIndex: 'wrvu_25th',
-          key: 'wrvu_25th',
-          width: 90,
-          render: (value: number) => formatNumber(value)
+          dataIndex: 'wrvus_25th',
+          key: 'wrvus_25th',
+          width: 100,
+          align: 'right',
+          render: (value: number) => value ? value.toLocaleString() : '-',
         },
         {
           title: '50th',
-          dataIndex: 'wrvu_50th',
-          key: 'wrvu_50th',
-          width: 90,
-          render: (value: number) => formatNumber(value)
+          dataIndex: 'wrvus_50th',
+          key: 'wrvus_50th',
+          width: 100,
+          align: 'right',
+          render: (value: number) => value ? value.toLocaleString() : '-',
         },
         {
           title: '75th',
-          dataIndex: 'wrvu_75th',
-          key: 'wrvu_75th',
-          width: 90,
-          render: (value: number) => formatNumber(value)
+          dataIndex: 'wrvus_75th',
+          key: 'wrvus_75th',
+          width: 100,
+          align: 'right',
+          render: (value: number) => value ? value.toLocaleString() : '-',
         },
         {
           title: '90th',
-          dataIndex: 'wrvu_90th',
-          key: 'wrvu_90th',
-          width: 90,
-          render: (value: number) => formatNumber(value),
-          onCell: () => ({ 'data-key': 'section-end' }),
-          onHeaderCell: () => ({ 'data-key': 'section-end' })
-        }
-      ]
+          dataIndex: 'wrvus_90th',
+          key: 'wrvus_90th',
+          width: 100,
+          align: 'right',
+          render: (value: number) => value ? value.toLocaleString() : '-',
+          className: 'section-end',
+        },
+      ],
     },
     {
       title: 'Conversion Factor',
@@ -243,345 +235,134 @@ const MarketData: React.FC = () => {
           title: '25th',
           dataIndex: 'cf_25th',
           key: 'cf_25th',
-          width: 90,
-          render: (value: number) => formatCF(value)
+          width: 100,
+          align: 'right',
+          render: (value: number) => value ? `$${value.toFixed(2)}` : '-',
         },
         {
           title: '50th',
           dataIndex: 'cf_50th',
           key: 'cf_50th',
-          width: 90,
-          render: (value: number) => formatCF(value)
+          width: 100,
+          align: 'right',
+          render: (value: number) => value ? `$${value.toFixed(2)}` : '-',
         },
         {
           title: '75th',
           dataIndex: 'cf_75th',
           key: 'cf_75th',
-          width: 90,
-          render: (value: number) => formatCF(value)
+          width: 100,
+          align: 'right',
+          render: (value: number) => value ? `$${value.toFixed(2)}` : '-',
         },
         {
           title: '90th',
           dataIndex: 'cf_90th',
           key: 'cf_90th',
-          width: 90,
-          render: (value: number) => formatCF(value)
-        }
-      ]
-    }
+          width: 100,
+          align: 'right',
+          render: (value: number) => value ? `$${value.toFixed(2)}` : '-',
+        },
+      ],
+    },
   ];
 
-  const filteredData = data.filter(record => 
-    record.specialty.toLowerCase().includes(searchText.toLowerCase())
+  const filteredData = data.filter(item =>
+    item.specialty.toLowerCase().includes(searchText.toLowerCase())
   );
 
   return (
-    <div className="h-full p-4">
-      <div className="screen-only">
+    <div className="h-full">
+      <div className="print:hidden">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold">Market Data Management</h2>
-          <Button
-            type="default"
-            icon={<PrinterOutlined />}
-            onClick={() => window.print()}
-            className="print-button"
-          >
-            Print Market Data
-          </Button>
+          <h2 className="text-2xl font-semibold text-gray-900">Market Data Management</h2>
+          <div className="flex gap-4">
+            <Button
+              type="primary"
+              icon={<UploadOutlined />}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center bg-blue-600 hover:bg-blue-700"
+            >
+              Upload Market Data
+            </Button>
+            <Button
+              icon={<PrinterOutlined />}
+              onClick={() => window.print()}
+              className="flex items-center border-gray-300"
+            >
+              Print Market Data
+            </Button>
+            <Button
+              onClick={() => {
+                setData([]);
+                localStorage.removeItem('marketData');
+                setUploadStatus(null);
+                setStatusMessage('');
+              }}
+              className="flex items-center border-gray-300"
+            >
+              Clear Data
+            </Button>
+          </div>
         </div>
 
-        <div className="grid gap-4">
-          <Card title="Upload Market Data">
-            <div className="mb-4">
-              <Upload.Dragger
-                accept=".csv"
-                beforeUpload={handleFileUpload}
-                showUploadList={false}
-              >
-                <p className="ant-upload-drag-icon">
-                  <UploadOutlined />
-                </p>
-                <p className="ant-upload-text">Click or drag a CSV file to upload</p>
-                <p className="ant-upload-hint">
-                  File should contain specialty benchmarks with percentiles
-                </p>
-              </Upload.Dragger>
+        {uploadStatus && (
+          <div className="mb-4">
+            <div className={`px-4 py-2 rounded-md text-sm inline-flex items-center gap-2 ${
+              uploadStatus === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                uploadStatus === 'success' ? 'bg-green-500' : 'bg-red-500'
+              }`}></div>
+              {statusMessage}
             </div>
+          </div>
+        )}
 
-            {uploadStatus && (
-              <Alert
-                message={statusMessage}
-                type={uploadStatus}
-                showIcon
-              />
-            )}
-          </Card>
-
-          <Card>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">Data Preview</h3>
-              <Input.Search
-                placeholder="Search specialties..."
-                allowClear
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)}
-                style={{ width: 200 }}
-              />
-            </div>
-            
-            <Table
-              dataSource={filteredData}
-              columns={columns}
-              rowKey="specialty"
-              scroll={{ x: 'max-content' }}
-              pagination={false}
-              bordered
-              size="small"
-              className="market-data-table"
-              showSorterTooltip={false}
-            />
-          </Card>
-        </div>
-      </div>
-
-      <div className="print-only">
-        <h2 className="text-2xl font-semibold text-center mb-4">Market Data Management</h2>
-        <Table
-          dataSource={filteredData}
-          columns={columns}
-          rowKey="specialty"
-          pagination={false}
-          bordered
-          size="small"
-          className="market-data-table"
-          showSorterTooltip={false}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileInputChange}
+          accept=".csv"
+          className="hidden"
         />
       </div>
 
-      <style jsx global>{`
-        @media screen {
-          .print-only {
-            display: none !important;
-          }
-        }
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-4 py-3 border-b border-gray-200 print:hidden">
+          <div className="flex justify-between items-center">
+            <div className="text-lg font-medium text-gray-900">Data Preview</div>
+            {data.length > 0 && (
+              <Input
+                placeholder="Search specialties..."
+                prefix={<SearchOutlined />}
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                className="w-72"
+              />
+            )}
+          </div>
+        </div>
 
-        @media print {
-          @page {
-            size: landscape;
-            margin: 0.5in;
-          }
-
-          /* Hide all navigation and UI elements */
-          nav,
-          header,
-          .ant-dropdown-trigger,
-          .screen-only {
-            display: none !important;
-          }
-
-          /* Hide the FMV Analyzer header */
-          :global(.ant-layout-header),
-          :global(.ant-menu) {
-            display: none !important;
-          }
-
-          .print-only {
-            display: block !important;
-            padding-top: 0 !important;
-          }
-
-          /* Remove any extra spacing at the top */
-          .h-full {
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-
-          /* Ensure the title is properly positioned */
-          .text-2xl {
-            margin-top: 0 !important;
-            margin-bottom: 20px !important;
-          }
-
-          /* Table styles */
-          .market-data-table {
-            width: 100% !important;
-            margin: 0 !important;
-          }
-
-          .market-data-table .ant-table {
-            border: 1px solid #d9d9d9 !important;
-            border-left: 1px solid #d9d9d9 !important;
-          }
-
-          /* Group header styling */
-          .market-data-table .ant-table-thead > tr:first-child > th {
-            background-color: #f0f0f0 !important;
-            border-bottom: 2px solid #d9d9d9 !important;
-            padding: 12px 8px !important;
-            border-top: none !important;
-          }
-
-          /* Remove extra borders in header */
-          .market-data-table .ant-table-thead > tr:first-child {
-            border-top: none !important;
-          }
-
-          .market-data-table .ant-table-thead > tr:first-child > th {
-            border-top: none !important;
-            border-bottom: 1px solid #d9d9d9 !important;
-          }
-
-          /* Cell styling */
-          .market-data-table .ant-table-cell {
-            color: black !important;
-            background: white !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            border-right: 1px solid #f0f0f0 !important;
-          }
-
-          /* Major section separators */
-          .market-data-table td[data-key="percentile_90th"],
-          .market-data-table td[data-key="wrvu_90th"],
-          .market-data-table .ant-table-thead th[data-key="percentile_90th"],
-          .market-data-table .ant-table-thead th[data-key="wrvu_90th"],
-          .market-data-table .specialty-column {
-            border-right: 2px solid #d9d9d9 !important;
-          }
-
-          /* Remove double borders */
-          .market-data-table .ant-table-container {
-            border: none !important;
-          }
-
-          .market-data-table .ant-table-thead {
-            border-top: none !important;
-          }
-
-          /* Ensure first column has left border */
-          .market-data-table .specialty-column {
-            border-left: 1px solid #d9d9d9 !important;
-          }
-
-          /* Major section separators */
-          .market-data-table td[data-key="section-end"],
-          .market-data-table .ant-table-thead th[data-key="section-end"] {
-            border-right: 2px solid #d9d9d9 !important;
-          }
-
-          /* Regular column borders */
-          .market-data-table .ant-table-cell {
-            border-right: 1px solid #f0f0f0 !important;
-          }
-
-          /* Group header borders */
-          .market-data-table .ant-table-thead > tr:first-child > th {
-            border-right: 1px solid #d9d9d9 !important;
-          }
-
-          /* Ensure borders in print */
-          @media print {
-            .market-data-table td[data-key="section-end"],
-            .market-data-table .ant-table-thead th[data-key="section-end"] {
-              border-right: 2px solid #d9d9d9 !important;
-            }
-          }
-        }
-
-        /* Regular table styles */
-        .market-data-table {
-          height: 100%;
-        }
-        
-        .market-data-table .ant-table {
-          border: 1px solid #d9d9d9;
-          border-left: 1px solid #d9d9d9 !important;
-        }
-
-        /* Remove double borders */
-        .market-data-table .ant-table-container {
-          border: none !important;
-        }
-
-        .market-data-table .ant-table-thead {
-          border-top: none !important;
-        }
-        
-        .market-data-table .ant-table-cell {
-          text-align: right;
-          padding: 8px !important;
-          white-space: nowrap;
-          border-right: none !important;
-        }
-
-        /* Major section separators */
-        .market-data-table td[data-key="percentile_90th"],
-        .market-data-table td[data-key="wrvu_90th"],
-        .market-data-table .ant-table-thead th[data-key="percentile_90th"],
-        .market-data-table .ant-table-thead th[data-key="wrvu_90th"] {
-          border-right: 2px solid #d9d9d9 !important;
-        }
-
-        /* Specialty column separator */
-        .market-data-table .specialty-column,
-        .market-data-table .ant-table-thead > tr:first-child > th:first-child {
-          text-align: left !important;
-          background: white;
-          position: sticky;
-          left: 0;
-          z-index: 1;
-          border-right: 2px solid #d9d9d9 !important;
-        }
-
-        /* Ensure specialty column separator extends in print */
-        @media print {
-          .market-data-table .specialty-column,
-          .market-data-table .ant-table-thead > tr:first-child > th:first-child {
-            border-right: 2px solid #d9d9d9 !important;
-          }
-        }
-
-        /* Group header styling */
-        .market-data-table .ant-table-thead > tr:first-child > th {
-          background: #f0f0f0 !important;
-          text-align: center !important;
-          padding: 12px 8px !important;
-          border-bottom: 2px solid #d9d9d9 !important;
-          border-top: none !important;
-          font-weight: 600;
-          border-right: none !important;
-        }
-
-        /* Right-align percentile headers */
-        .market-data-table .ant-table-thead > tr:last-child > th {
-          text-align: right !important;
-        }
-
-        /* Keep specialty header left-aligned */
-        .market-data-table .ant-table-thead > tr:last-child > th.specialty-column {
-          text-align: left !important;
-        }
-
-        /* Add vertical separators in group headers */
-        .market-data-table .ant-table-thead > tr:first-child > th:nth-child(2),
-        .market-data-table .ant-table-thead > tr:first-child > th:nth-child(3) {
-          border-right: 2px solid #d9d9d9 !important;
-        }
-
-        /* Major section separators */
-        .market-data-table td[data-key="section-end"],
-        .market-data-table .ant-table-thead th[data-key="section-end"] {
-          border-right: 2px solid #d9d9d9 !important;
-        }
-
-        /* Ensure section separators extend in print */
-        @media print {
-          .market-data-table .ant-table-thead > tr:first-child > th:nth-child(2),
-          .market-data-table .ant-table-thead > tr:first-child > th:nth-child(3) {
-            border-right: 2px solid #d9d9d9 !important;
-          }
-        }
-      `}</style>
+        <div className="px-4 py-3">
+          {data.length > 0 ? (
+            <Table<MarketDataRow>
+              columns={columns}
+              dataSource={filteredData}
+              rowKey="specialty"
+              pagination={false}
+              scroll={{ x: 'max-content', y: 'calc(100vh - 300px)' }}
+              bordered
+              size="middle"
+              className="market-data-table"
+            />
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              No market data loaded. Please upload a CSV file.
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

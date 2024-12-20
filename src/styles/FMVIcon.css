@@ -1,0 +1,14 @@
+.fmv-icon {
+  color: #1a3353;
+  transition: color 0.3s ease;
+}
+
+.fmv-icon:hover {
+  color: #2563eb;
+}
+
+.fmv-icon.header-icon {
+  width: 40px;
+  height: 40px;
+  margin-right: 16px;
+} 
