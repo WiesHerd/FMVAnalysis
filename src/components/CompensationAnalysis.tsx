@@ -1073,11 +1073,19 @@ const RiskContextEditor: React.FC<{
 };
 
 // Update the main component to use RiskConfigProvider
-const CompensationAnalysis: React.FC<CompensationAnalysisProps> = (props) => {
+const CompensationAnalysis: React.FC<CompensationAnalysisProps> = ({
+  compensation,
+  benchmarks,
+  onUpdate
+}) => {
   return (
-    <RiskConfigProvider>
-      <CompensationAnalysisContent {...props} />
-    </RiskConfigProvider>
+    <div className="space-y-6">
+      <CompensationAnalysisContent 
+        compensation={compensation}
+        benchmarks={benchmarks}
+        onUpdate={onUpdate}
+      />
+    </div>
   );
 };
 

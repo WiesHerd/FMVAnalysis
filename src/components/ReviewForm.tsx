@@ -53,7 +53,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         review_date: new Date().toISOString(),
         reviewer: values.reviewer,
         comments: values.comments,
-        risk_level: values.risk_level
+        risk_level: currentRiskLevel
       };
 
       // Load existing reviews
@@ -84,7 +84,6 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         layout="vertical"
         onFinish={handleSubmit}
         initialValues={{
-          risk_level: currentRiskLevel,
           status: 'Pending'
         }}
       >
@@ -93,22 +92,25 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
           label="Review Status"
           rules={[{ required: true, message: 'Please select a status' }]}
         >
-          <Radio.Group>
-            <Radio.Button value="Approved">Approve</Radio.Button>
-            <Radio.Button value="Rejected">Reject</Radio.Button>
-            <Radio.Button value="Pending">Mark as Pending</Radio.Button>
-          </Radio.Group>
-        </Form.Item>
-
-        <Form.Item
-          name="risk_level"
-          label="Risk Assessment"
-          rules={[{ required: true, message: 'Please select a risk level' }]}
-        >
-          <Radio.Group>
-            <Radio.Button value="Low">Low Risk</Radio.Button>
-            <Radio.Button value="Medium">Medium Risk</Radio.Button>
-            <Radio.Button value="High">High Risk</Radio.Button>
+          <Radio.Group buttonStyle="solid">
+            <Radio.Button 
+              value="Approved" 
+              className="hover:!bg-blue-600 hover:!text-white [&.ant-radio-button-wrapper-checked]:!bg-blue-600 [&.ant-radio-button-wrapper-checked]:!text-white [&.ant-radio-button-wrapper-checked]:!border-blue-600"
+            >
+              Approve
+            </Radio.Button>
+            <Radio.Button 
+              value="Rejected" 
+              className="hover:!bg-blue-600 hover:!text-white [&.ant-radio-button-wrapper-checked]:!bg-blue-600 [&.ant-radio-button-wrapper-checked]:!text-white [&.ant-radio-button-wrapper-checked]:!border-blue-600"
+            >
+              Reject
+            </Radio.Button>
+            <Radio.Button 
+              value="Pending" 
+              className="hover:!bg-blue-600 hover:!text-white [&.ant-radio-button-wrapper-checked]:!bg-blue-600 [&.ant-radio-button-wrapper-checked]:!text-white [&.ant-radio-button-wrapper-checked]:!border-blue-600"
+            >
+              Mark as Pending
+            </Radio.Button>
           </Radio.Group>
         </Form.Item>
 
@@ -137,7 +139,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
             htmlType="submit"
             icon={<SaveOutlined />}
             loading={loading}
-            className="bg-blue-500"
+            className="bg-blue-600 hover:bg-blue-700 border-blue-600 hover:border-blue-700"
           >
             Save Review
           </Button>
