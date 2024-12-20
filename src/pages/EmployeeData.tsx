@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Card, Table, Input, Button, Alert } from 'antd';
+import { Upload, Card, Table, Input, Button, Alert, Empty } from 'antd';
 import { UploadOutlined, PrinterOutlined } from '@ant-design/icons';
 import Papa, { ParseResult } from 'papaparse';
 import '../styles/EmployeeData.css';
@@ -118,6 +118,21 @@ const EmployeeDataTable: React.FC<{ data: EmployeeData[], searchText: string }> 
     (record.employee_id?.toLowerCase() || '').includes(searchText.toLowerCase())
   );
 
+  if (data.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description={
+            <span className="text-gray-500">
+              No employee data loaded. Please upload a CSV file.
+            </span>
+          }
+        />
+      </div>
+    );
+  }
+
   return (
     <Table
       dataSource={filteredData}
@@ -135,8 +150,6 @@ const EmployeeDataTable: React.FC<{ data: EmployeeData[], searchText: string }> 
 const EmployeeDataPage: React.FC = () => {
   const [employeeData, setEmployeeData] = useState<EmployeeData[]>([]);
   const [searchText, setSearchText] = useState('');
-  const [uploadStatus, setUploadStatus] = useState<'success' | 'error' | null>(null);
-  const [statusMessage, setStatusMessage] = useState('');
 
   useEffect(() => {
     const savedData = localStorage.getItem('employeeData');
@@ -144,20 +157,13 @@ const EmployeeDataPage: React.FC = () => {
       try {
         const parsedData = JSON.parse(savedData);
         setEmployeeData(parsedData);
-        setUploadStatus('success');
-        setStatusMessage(`Loaded ${parsedData.length} records from storage`);
       } catch (err) {
         console.error('Error loading employee data from storage:', err);
-        setUploadStatus('error');
-        setStatusMessage('Error loading saved employee data');
       }
     }
   }, []);
 
   const handleFileUpload = (file: File) => {
-    setUploadStatus(null);
-    setStatusMessage('');
-
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -165,8 +171,7 @@ const EmployeeDataPage: React.FC = () => {
       complete: (results: ParseResult<any>) => {
         try {
           if (!results.data || results.data.length === 0) {
-            setUploadStatus('error');
-            setStatusMessage('No data found in the CSV file');
+            console.error('No data found in the CSV file');
             return;
           }
 
@@ -183,8 +188,7 @@ const EmployeeDataPage: React.FC = () => {
 
           const missingColumns = requiredColumns.filter(col => !results.meta.fields?.includes(col));
           if (missingColumns.length > 0) {
-            setUploadStatus('error');
-            setStatusMessage(`Missing required columns: ${missingColumns.join(', ')}`);
+            console.error(`Missing required columns: ${missingColumns.join(', ')}`);
             return;
           }
 
@@ -202,18 +206,12 @@ const EmployeeDataPage: React.FC = () => {
 
           setEmployeeData(parsedData);
           localStorage.setItem('employeeData', JSON.stringify(parsedData));
-          setUploadStatus('success');
-          setStatusMessage(`Successfully uploaded ${parsedData.length} records`);
         } catch (err) {
           console.error('Error processing CSV data:', err);
-          setUploadStatus('error');
-          setStatusMessage(`Error processing CSV file: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       },
       error: (error: Error) => {
         console.error('PapaParse error:', error);
-        setUploadStatus('error');
-        setStatusMessage('Error parsing CSV file: ' + error.message);
       }
     });
     return false;
@@ -222,8 +220,6 @@ const EmployeeDataPage: React.FC = () => {
   const handleClearData = () => {
     setEmployeeData([]);
     localStorage.removeItem('employeeData');
-    setUploadStatus(null);
-    setStatusMessage('');
   };
 
   return (
@@ -264,28 +260,21 @@ const EmployeeDataPage: React.FC = () => {
           >
             <input type="file" accept=".csv" className="hidden" />
           </Upload.Dragger>
-
-          {uploadStatus && (
-            <Alert
-              message={statusMessage}
-              type={uploadStatus}
-              showIcon
-              className="mb-4"
-            />
-          )}
         </div>
 
         <div className="mb-4">
           <h2 className="text-lg font-medium mb-2">Data Preview</h2>
-          <div className="flex justify-end mb-2">
-            <Input.Search
-              placeholder="Search employees..."
-              allowClear
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              style={{ width: 200 }}
-            />
-          </div>
+          {employeeData.length > 0 && (
+            <div className="flex justify-end mb-2">
+              <Input.Search
+                placeholder="Search employees..."
+                allowClear
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                style={{ width: 200 }}
+              />
+            </div>
+          )}
           <EmployeeDataTable data={employeeData} searchText={searchText} />
         </div>
       </div>
