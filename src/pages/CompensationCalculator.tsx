@@ -4,6 +4,7 @@ import { Card, Select, Button, Input, Form, Tooltip, Modal, Typography, Popconfi
 import { PlusOutlined, InfoCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 
 interface Provider {
+  employee_id: string;
   full_name: string;
   specialty: string;
   base_pay: number;
@@ -86,10 +87,14 @@ const CompensationCalculator: React.FC = () => {
     // Load providers and specialties from local storage
     const storedData = localStorage.getItem('employeeData');
     if (storedData) {
-      const data = JSON.parse(storedData);
-      setProviders(data);
-      const uniqueSpecialties = Array.from(new Set(data.map((p: Provider) => p.specialty)));
-      setSpecialties(uniqueSpecialties);
+      try {
+        const data = JSON.parse(storedData) as Provider[];
+        setProviders(data);
+        const uniqueSpecialties = Array.from(new Set(data.map((p: Provider) => p.specialty)));
+        setSpecialties(uniqueSpecialties);
+      } catch (err) {
+        console.error('Error loading provider data:', err);
+      }
     }
   }, []);
 
@@ -107,13 +112,13 @@ const CompensationCalculator: React.FC = () => {
       setSelectedProvider(selected);
 
       // Create initial components with the provider's data
-      const initialComponents = [
+      const initialComponents: CompensationComponent[] = [
         {
           id: '1',
           type: 'base',
           name: 'Clinical Base Pay',
           description: defaultDescriptions.base,
-          amount: Number(selected.base_pay) || 0,
+          amount: selected.base_pay ?? 0,
           fte: 1.0,
           wrvus: 0
         },
@@ -122,17 +127,17 @@ const CompensationCalculator: React.FC = () => {
           type: 'wrvu',
           name: 'wRVU Incentive',
           description: defaultDescriptions.wrvu,
-          amount: Number(selected.wrvu_incentive) || 0,
+          amount: selected.wrvu_incentive ?? 0,
           fte: 1.0,
-          wrvus: Number(selected.annual_wrvus) || 0,
-          conversion_factor: Number(selected.conversion_factor) || 0
+          wrvus: selected.annual_wrvus ?? 0,
+          conversion_factor: selected.conversion_factor ?? 0
         },
         {
           id: '3',
           type: 'quality',
           name: 'Quality Payments',
           description: defaultDescriptions.quality,
-          amount: Number(selected.quality_payments) || 0,
+          amount: selected.quality_payments ?? 0,
           fte: 1.0,
           wrvus: 0
         },
@@ -141,7 +146,7 @@ const CompensationCalculator: React.FC = () => {
           type: 'admin',
           name: 'Administrative Payments',
           description: defaultDescriptions.admin,
-          amount: Number(selected.admin_payments) || 0,
+          amount: selected.admin_payments ?? 0,
           fte: 0.2,
           wrvus: 0
         }
@@ -153,7 +158,7 @@ const CompensationCalculator: React.FC = () => {
       setSpecialty(selected.specialty);
 
       // Calculate total compensation
-      const total = initialComponents.reduce((sum, comp) => sum + Number(comp.amount), 0);
+      const total = initialComponents.reduce((sum, comp) => sum + comp.amount, 0);
 
       // Save the result
       const result = {
@@ -162,13 +167,13 @@ const CompensationCalculator: React.FC = () => {
           specialty: selected.specialty,
           components: initialComponents,
           total: total,
-          wrvus: Number(selected.annual_wrvus) || 0,
-          perWrvu: Number(selected.conversion_factor) || 0,
+          wrvus: selected.annual_wrvus ?? 0,
+          perWrvu: selected.conversion_factor ?? 0,
           componentTotals: {
-            baseTotal: Number(selected.base_pay) || 0,
-            productivityTotal: Number(selected.wrvu_incentive) || 0,
-            qualityTotal: Number(selected.quality_payments) || 0,
-            adminTotal: Number(selected.admin_payments) || 0,
+            baseTotal: selected.base_pay ?? 0,
+            productivityTotal: selected.wrvu_incentive ?? 0,
+            qualityTotal: selected.quality_payments ?? 0,
+            adminTotal: selected.admin_payments ?? 0,
             callTotal: 0
           }
         }
@@ -176,6 +181,9 @@ const CompensationCalculator: React.FC = () => {
 
       console.log('Saving initial result:', result);
       localStorage.setItem('compensationResults', JSON.stringify(result));
+      
+      // Navigate to the results page with the correct URL structure
+      navigate(`/results/${encodeURIComponent(providerName)}?specialty=${encodeURIComponent(selected.specialty)}&id=${encodeURIComponent(selected.employee_id)}`);
     }
   };
 
@@ -434,7 +442,7 @@ const CompensationCalculator: React.FC = () => {
                           <div>
                             <Text className="block text-sm text-gray-500 mb-1">Annual wRVUs</Text>
                             <Input
-                              value={formatNumber(comp.wrvus)}
+                              value={formatNumber(comp.wrvus ?? 0)}
                               onChange={e => {
                                 const value = e.target.value.replace(/[^0-9.]/g, '');
                                 handleComponentChange(comp.id, 'wrvus', Number(value));
@@ -452,7 +460,7 @@ const CompensationCalculator: React.FC = () => {
                           <div>
                             <Text className="block text-sm text-gray-500 mb-1">Conversion Factor</Text>
                             <Input
-                              value={formatCurrency(comp.conversion_factor)}
+                              value={formatCurrency(comp.conversion_factor ?? 0)}
                               onChange={e => {
                                 const value = e.target.value.replace(/[^0-9.]/g, '');
                                 handleComponentChange(comp.id, 'conversion_factor', Number(value));

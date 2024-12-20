@@ -1467,22 +1467,22 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
   return (
     <div className="space-y-8 print:space-y-6 font-inter">
       {/* Enterprise Dashboard Header */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
-        <div className="relative max-w-4xl mx-auto">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        <div className="relative max-w-3xl mx-auto">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center space-x-4 mb-6">
-              <div className="h-[1px] w-16 bg-blue-200"></div>
+            <div className="inline-flex items-center justify-center space-x-3 mb-4">
+              <div className="h-[1px] w-12 bg-blue-200"></div>
               <span className="text-xs font-medium tracking-[0.2em] text-blue-600">FAIR MARKET VALUE ANALYSIS</span>
-              <div className="h-[1px] w-16 bg-blue-200"></div>
+              <div className="h-[1px] w-12 bg-blue-200"></div>
             </div>
             
-            <h1 className="text-5xl font-light text-gray-900 mb-4">
+            <h1 className="text-4xl font-light text-gray-900 mb-3">
               {compensation.providerName || 'Provider'}
             </h1>
             
             <div className="inline-block">
               <div className="flex items-center justify-center space-x-2">
-                <div className="text-lg text-gray-600">
+                <div className="text-base text-gray-600">
                   <span className="font-normal">{compensation.specialty || 'Not Specified'}</span>
                 </div>
               </div>
@@ -2074,6 +2074,21 @@ const RiskAnalysisSection: React.FC<{
 }> = ({ analysis, riskRules, setRiskRules, context, onContextUpdate, onRuleChange, onAdjustmentAdd }) => {
   const [selectedFactor, setSelectedFactor] = useState<RiskFactor | null>(null);
   const [factors, setFactors] = useState(analysis.factors);
+  const [totalScore, setTotalScore] = useState(analysis.totalScore);
+
+  // Calculate risk level based on total score
+  const calculateRiskLevel = (score: number): 'low' | 'medium' | 'high' | 'critical' => {
+    if (score >= 10) return 'critical';
+    if (score >= 7) return 'high';
+    if (score >= 4) return 'medium';
+    return 'low';
+  };
+
+  // Update total score whenever factors change
+  useEffect(() => {
+    const newTotalScore = factors.reduce((sum, factor) => sum + factor.score, 0);
+    setTotalScore(newTotalScore);
+  }, [factors]);
 
   const handleFactorUpdate = (score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => {
     const updatedFactors = factors.map(f => 
@@ -2141,11 +2156,12 @@ const RiskAnalysisSection: React.FC<{
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-light text-gray-900">FMV Risk Analysis</h2>
         <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-          analysis.overallRisk === 'high' ? 'bg-red-100 text-red-800' :
-          analysis.overallRisk === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+          calculateRiskLevel(totalScore) === 'critical' ? 'bg-red-100 text-red-800' :
+          calculateRiskLevel(totalScore) === 'high' ? 'bg-orange-100 text-orange-800' :
+          calculateRiskLevel(totalScore) === 'medium' ? 'bg-yellow-100 text-yellow-800' :
           'bg-green-100 text-green-800'
         }`}>
-          {analysis.summary}
+          {calculateRiskLevel(totalScore).charAt(0).toUpperCase() + calculateRiskLevel(totalScore).slice(1)} Risk
         </div>
       </div>
 
@@ -2189,23 +2205,31 @@ const RiskAnalysisSection: React.FC<{
             <p className="text-sm text-gray-600">Based on comprehensive analysis of all risk factors</p>
           </div>
           <div className="text-2xl font-light text-gray-900">
-            {analysis.totalScore} / 12
+            {totalScore} / 12
           </div>
         </div>
         <div className="mt-4 grid grid-cols-4 gap-4">
-          <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+          <div className={`p-3 rounded-lg border ${
+            calculateRiskLevel(totalScore) === 'low' ? 'bg-green-50 border-green-200 ring-2 ring-green-500' : 'bg-green-50 border-green-200'
+          }`}>
             <div className="text-sm font-medium text-green-800">Low Risk (0-3)</div>
             <div className="text-xs text-green-600">Aligned with market standards</div>
           </div>
-          <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+          <div className={`p-3 rounded-lg border ${
+            calculateRiskLevel(totalScore) === 'medium' ? 'bg-yellow-50 border-yellow-200 ring-2 ring-yellow-500' : 'bg-yellow-50 border-yellow-200'
+          }`}>
             <div className="text-sm font-medium text-yellow-800">Medium Risk (4-6)</div>
             <div className="text-xs text-yellow-600">Additional documentation needed</div>
           </div>
-          <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+          <div className={`p-3 rounded-lg border ${
+            calculateRiskLevel(totalScore) === 'high' ? 'bg-orange-50 border-orange-200 ring-2 ring-orange-500' : 'bg-orange-50 border-orange-200'
+          }`}>
             <div className="text-sm font-medium text-orange-800">High Risk (7-9)</div>
             <div className="text-xs text-orange-600">Requires thorough justification</div>
           </div>
-          <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+          <div className={`p-3 rounded-lg border ${
+            calculateRiskLevel(totalScore) === 'critical' ? 'bg-red-50 border-red-200 ring-2 ring-red-500' : 'bg-red-50 border-red-200'
+          }`}>
             <div className="text-sm font-medium text-red-800">Critical Risk (10-12)</div>
             <div className="text-xs text-red-600">Immediate review required</div>
           </div>

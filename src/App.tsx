@@ -3,17 +3,34 @@ import 'antd/dist/reset.css';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Layout, Button, Dropdown } from 'antd';
-import { TeamOutlined, LineChartOutlined } from '@ant-design/icons';
+import { TeamOutlined, LineChartOutlined, DashboardOutlined } from '@ant-design/icons';
 import CompensationCalculator from './pages/CompensationCalculator';
 import CompensationResults from './pages/CompensationResults';
 import MarketData from './pages/MarketData';
 import EmployeeData from './pages/EmployeeData';
+import Dashboard from './pages/Dashboard';
 import FMVIcon from './components/FMVIcon';
 
 const { Header, Content } = Layout;
 
 const App: React.FC = () => {
   const items = [
+    {
+      key: 'dashboard',
+      label: (
+        <Link to="/dashboard" className="block p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
+              <DashboardOutlined className="text-blue-500 text-xl" />
+            </div>
+            <div>
+              <div className="text-gray-900 font-medium">Dashboard</div>
+              <div className="text-gray-500 text-sm">FMV Review Overview</div>
+            </div>
+          </div>
+        </Link>
+      ),
+    },
     {
       key: 'provider-data',
       label: (
@@ -52,7 +69,7 @@ const App: React.FC = () => {
     <Router>
       <Layout className="min-h-screen">
         <Header className="bg-white px-6 flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/dashboard" className="flex items-center gap-2">
             <FMVIcon className="w-6 h-6 text-blue-500" />
             <div>
               <h1 className="text-lg font-medium text-gray-900 m-0">Fair Market Value Review</h1>
@@ -85,7 +102,8 @@ const App: React.FC = () => {
         <Content className="p-6 bg-gray-50">
           <Routes>
             <Route path="/" element={<CompensationCalculator />} />
-            <Route path="/results" element={<CompensationResults />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/results/:name" element={<CompensationResults />} />
             <Route path="/market-data" element={<MarketData />} />
             <Route path="/employee-data" element={<EmployeeData />} />
           </Routes>

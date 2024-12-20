@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import CompensationAnalysis from '../components/CompensationAnalysis';
 
 interface CompensationComponent {
@@ -21,118 +21,134 @@ interface CompensationResult {
 
 const CompensationResults: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [compensation, setCompensation] = useState<any>(null);
   const [marketData, setMarketData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load compensation results
-    const storedResults = localStorage.getItem('compensationResults');
-    console.log('Raw stored results:', storedResults);
-    
-    if (storedResults) {
+    const loadData = async () => {
       try {
-        const results = JSON.parse(storedResults);
-        console.log('Parsed results:', results);
-        
-        if (results && results.provider) {
-          console.log('Provider data:', results.provider);
-          console.log('Component totals:', results.provider.componentTotals);
-          console.log('Components:', results.provider.components);
-          
-          // Transform components into the expected format
-          const transformedComponents = {
-            baseTotal: Number(results.provider.componentTotals.baseTotal) || 0,
-            productivityTotal: Number(results.provider.componentTotals.productivityTotal) || 0,
-            qualityTotal: Number(results.provider.componentTotals.qualityTotal) || 0,
-            adminTotal: Number(results.provider.componentTotals.adminTotal) || 0,
-            callTotal: Number(results.provider.componentTotals.callTotal) || 0
-          };
+        // Get URL parameters
+        const params = new URLSearchParams(location.search);
+        const specialty = params.get('specialty');
+        const id = params.get('id');
 
-          // Set the compensation data with transformed components
-          setCompensation({
-            ...results.provider,
-            components: transformedComponents
-          });
+        if (!specialty || !id) {
+          setError('Missing specialty or provider ID in URL');
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error('Error parsing compensation results:', error);
-      }
-    }
-    setLoading(false);
-  }, []);
 
-  useEffect(() => {
-    if (!compensation?.specialty) return;
+        // Load provider data from localStorage
+        const savedData = localStorage.getItem('employeeData');
+        if (!savedData) {
+          setError('No provider data found');
+          setLoading(false);
+          return;
+        }
 
-    // Load market data
-    const storedMarketData = localStorage.getItem('marketData');
-    if (storedMarketData) {
-      try {
-        const data = JSON.parse(storedMarketData);
-        console.log('Loaded market data:', data);
-        console.log('Looking for specialty:', compensation.specialty);
+        const providers = JSON.parse(savedData);
+        const provider = providers.find((p: any) => p.employee_id === id);
         
-        // Find the matching specialty data
-        const specialtyData = data.find((d: any) => 
-          d.specialty.toLowerCase() === compensation.specialty.toLowerCase()
+        if (!provider) {
+          setError(`Provider with ID ${id} not found`);
+          setLoading(false);
+          return;
+        }
+
+        // Calculate total compensation
+        const total = provider.base_pay + provider.wrvu_incentive + 
+                    provider.quality_payments + provider.admin_payments;
+        
+        // Transform the data into the expected format
+        const transformedData = {
+          name: provider.full_name,
+          specialty: provider.specialty,
+          total: total,
+          wrvus: provider.annual_wrvus,
+          perWrvu: provider.conversion_factor,
+          componentTotals: {
+            baseTotal: provider.base_pay,
+            productivityTotal: provider.wrvu_incentive,
+            qualityTotal: provider.quality_payments,
+            adminTotal: provider.admin_payments,
+            callTotal: 0
+          }
+        };
+
+        setCompensation(transformedData);
+
+        // Load market data for the provider's specialty
+        const storedMarketData = localStorage.getItem('marketData');
+        if (!storedMarketData) {
+          setError('No market data found');
+          setLoading(false);
+          return;
+        }
+
+        const marketDataArray = JSON.parse(storedMarketData);
+        const specialtyData = marketDataArray.find((d: any) => 
+          d.specialty.toLowerCase().trim() === provider.specialty.toLowerCase().trim()
         );
-        console.log('Found specialty data:', specialtyData);
-        
-        if (specialtyData) {
-          // Transform market data into benchmarks format
-          const benchmarks = [
-            {
-              percentile: '10th',
-              tcc: specialtyData.percentile_25th * 0.8,
-              wrvus: specialtyData.wrvu_25th * 0.8,
-              conversionFactor: specialtyData.cf_25th * 0.8
-            },
-            {
-              percentile: '25th',
-              tcc: specialtyData.percentile_25th,
-              wrvus: specialtyData.wrvu_25th,
-              conversionFactor: specialtyData.cf_25th
-            },
-            {
-              percentile: '50th',
-              tcc: specialtyData.percentile_50th,
-              wrvus: specialtyData.wrvu_50th,
-              conversionFactor: specialtyData.cf_50th
-            },
-            {
-              percentile: '75th',
-              tcc: specialtyData.percentile_75th,
-              wrvus: specialtyData.wrvu_75th,
-              conversionFactor: specialtyData.cf_75th
-            },
-            {
-              percentile: '90th',
-              tcc: specialtyData.percentile_90th,
-              wrvus: specialtyData.wrvu_90th,
-              conversionFactor: specialtyData.cf_90th
-            }
-          ];
-          console.log('Setting benchmarks:', benchmarks);
-          setMarketData(benchmarks);
+
+        if (!specialtyData) {
+          setError(`No market data found for specialty: ${provider.specialty}`);
+          setLoading(false);
+          return;
         }
+
+        const benchmarks = [
+          {
+            percentile: '25th',
+            tcc: specialtyData.tcc_25th,
+            wrvus: specialtyData.wrvu_25th,
+            conversionFactor: specialtyData.tcc_per_wrvu_25th
+          },
+          {
+            percentile: '50th',
+            tcc: specialtyData.tcc_50th,
+            wrvus: specialtyData.wrvu_50th,
+            conversionFactor: specialtyData.tcc_per_wrvu_50th
+          },
+          {
+            percentile: '75th',
+            tcc: specialtyData.tcc_75th,
+            wrvus: specialtyData.wrvu_75th,
+            conversionFactor: specialtyData.tcc_per_wrvu_75th
+          },
+          {
+            percentile: '90th',
+            tcc: specialtyData.tcc_90th,
+            wrvus: specialtyData.wrvu_90th,
+            conversionFactor: specialtyData.tcc_per_wrvu_90th
+          }
+        ];
+
+        setMarketData(benchmarks);
+        setLoading(false);
       } catch (error) {
-        console.error('Error parsing market data:', error);
+        console.error('Error loading data:', error);
+        setError('Error loading data. Please try again.');
+        setLoading(false);
       }
-    }
-  }, [compensation?.specialty]);
+    };
+
+    loadData();
+  }, [location]);
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  if (!compensation) {
-    return <div>No compensation data found</div>;
+  if (error) {
+    return <div className="text-red-600">{error}</div>;
   }
 
-  console.log('Current compensation state:', compensation);
-  console.log('Components:', compensation.components);
-  console.log('Component totals:', compensation.componentTotals);
+  if (!compensation || !marketData.length) {
+    return <div>No data found. Please ensure market data is uploaded for {compensation?.specialty}.</div>;
+  }
 
   // Transform components into the expected format
   const transformedComponents = {
@@ -142,8 +158,6 @@ const CompensationResults: React.FC = () => {
     adminTotal: Number(compensation.componentTotals?.adminTotal) || 0,
     callTotal: Number(compensation.componentTotals?.callTotal) || 0
   };
-
-  console.log('Final transformed components:', transformedComponents);
 
   const analysisData = {
     providerName: compensation.name || '',
@@ -193,78 +207,7 @@ const CompensationResults: React.FC = () => {
     }
   };
 
-  // Default benchmarks if no market data is available
-  const defaultBenchmarks = [
-    { 
-      percentile: '10th', 
-      tcc: analysisData.total * 0.6,
-      clinicalFte: 0.7,
-      wrvus: analysisData.wrvus * 0.6,
-      conversionFactor: analysisData.perWrvu * 0.6,
-      callRate: 800,
-      adminRate: 125
-    },
-    { 
-      percentile: '25th', 
-      tcc: analysisData.total * 0.8,
-      clinicalFte: 0.8,
-      wrvus: analysisData.wrvus * 0.8,
-      conversionFactor: analysisData.perWrvu * 0.8,
-      callRate: 1000,
-      adminRate: 150
-    },
-    { 
-      percentile: '50th', 
-      tcc: analysisData.total,
-      clinicalFte: 0.9,
-      wrvus: analysisData.wrvus,
-      conversionFactor: analysisData.perWrvu,
-      callRate: 1200,
-      adminRate: 175
-    },
-    { 
-      percentile: '75th', 
-      tcc: analysisData.total * 1.2,
-      clinicalFte: 1.0,
-      wrvus: analysisData.wrvus * 1.2,
-      conversionFactor: analysisData.perWrvu * 1.2,
-      callRate: 1400,
-      adminRate: 200
-    },
-    { 
-      percentile: '90th', 
-      tcc: analysisData.total * 1.4,
-      clinicalFte: 1.0,
-      wrvus: analysisData.wrvus * 1.4,
-      conversionFactor: analysisData.perWrvu * 1.4,
-      callRate: 1600,
-      adminRate: 225
-    },
-    { 
-      percentile: '100th', 
-      tcc: analysisData.total * 1.6,
-      clinicalFte: 1.0,
-      wrvus: analysisData.wrvus * 1.6,
-      conversionFactor: analysisData.perWrvu * 1.6,
-      callRate: 1800,
-      adminRate: 250
-    }
-  ];
-
-  const benchmarksToUse = marketData.length > 0 ? marketData.map(benchmark => ({
-    ...benchmark,
-    conversionFactor: benchmark.conversionFactor || (benchmark.tcc / benchmark.wrvus)
-  })) : defaultBenchmarks;
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <CompensationAnalysis
-        compensation={analysisData}
-        benchmarks={benchmarksToUse}
-        onUpdate={() => {}}
-      />
-    </div>
-  );
+  return <CompensationAnalysis compensation={analysisData} benchmarks={marketData} onUpdate={() => {}} />;
 };
 
 export default CompensationResults; 
