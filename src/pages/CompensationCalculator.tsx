@@ -404,8 +404,7 @@ const CompensationCalculator: React.FC = () => {
                             height: '32px',
                             padding: '4px 11px',
                             fontSize: '14px',
-                            textAlign: 'right',
-                            fontFamily: 'monospace'
+                            textAlign: 'right'
                           }}
                           className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
@@ -424,8 +423,7 @@ const CompensationCalculator: React.FC = () => {
                             height: '32px',
                             padding: '4px 8px',
                             fontSize: '14px',
-                            textAlign: 'right',
-                            fontFamily: 'monospace'
+                            textAlign: 'right'
                           }}
                           className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         />
@@ -446,8 +444,7 @@ const CompensationCalculator: React.FC = () => {
                                 height: '32px',
                                 padding: '4px 11px',
                                 fontSize: '14px',
-                                textAlign: 'right',
-                                fontFamily: 'monospace'
+                                textAlign: 'right'
                               }}
                               className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             />
@@ -465,8 +462,7 @@ const CompensationCalculator: React.FC = () => {
                                 height: '32px',
                                 padding: '4px 11px',
                                 fontSize: '14px',
-                                textAlign: 'right',
-                                fontFamily: 'monospace'
+                                textAlign: 'right'
                               }}
                               className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             />

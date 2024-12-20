@@ -13,31 +13,30 @@
 }
 
 .market-data-table .ant-table {
-  border: 0.5px solid #e5e7eb;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
 }
 
 .market-data-table .ant-table-container {
-  border-left: 0.5px solid #e5e7eb;
-  border-right: 0.5px solid #e5e7eb;
-  border-bottom: 0.5px solid #e5e7eb;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
+  overflow: hidden;
 }
 
 .market-data-table .ant-table-thead > tr > th {
-  background-color: #e2e8f0 !important;
-  color: #1f2937;
+  background-color: #f1f5f9 !important;
+  color: #64748b;
   font-weight: 600;
   text-align: center;
   padding: 12px 8px;
   border-bottom: 1px solid #e5e7eb;
-  border-right: none;
+  border-right: none !important;
   white-space: nowrap;
 }
 
 .market-data-table .ant-table-thead > tr:first-child > th {
-  background-color: #cbd5e1 !important;
-  color: #1f2937;
+  background-color: #e2e8f0 !important;
+  color: #334155;
   font-weight: 600;
   border-top: none;
 }
@@ -51,7 +50,7 @@
 }
 
 .market-data-table .ant-table-thead > tr > th.ant-table-cell-fix-left {
-  background-color: #cbd5e1 !important;
+  background-color: #e2e8f0 !important;
 }
 
 .market-data-table .specialty-column {
@@ -64,9 +63,14 @@
 .market-data-table .ant-table-tbody > tr > td {
   padding: 12px 8px;
   color: #374151;
-  border-bottom: 0.5px solid #e5e7eb;
-  border-right: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: none !important;
   white-space: nowrap;
+}
+
+/* Remove monospace font and keep only alignment */
+.market-data-table .ant-table-tbody > tr > td:not(:first-child) {
+  text-align: right;
 }
 
 .market-data-table .ant-table-tbody > tr:hover > td {
@@ -75,7 +79,7 @@
 
 .market-data-table .ant-table-tbody > tr > td.specialty-column {
   font-weight: 500;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb !important;
 }
 
 .market-data-table td.section-end,
@@ -85,6 +89,11 @@
 
 .market-data-table .ant-table-cell {
   transition: background-color 0.2s;
+  border-right: none !important;
+}
+
+.market-data-table .ant-table-cell.section-end {
+  border-right: 1px solid #e5e7eb !important;
 }
 
 .market-data-table .ant-table-row:hover .ant-table-cell {

@@ -1470,23 +1470,22 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
   return (
     <div className="space-y-8 print:space-y-6 font-inter">
       {/* Enterprise Dashboard Header */}
-      <div className="relative mb-12 pb-6">
-        <div className="absolute inset-0 h-32 bg-gradient-to-b from-gray-50 to-white"></div>
-        <div className="relative max-w-4xl mx-auto pt-8">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
+        <div className="relative max-w-4xl mx-auto">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center space-x-3 mb-6">
-              <div className="h-[1px] w-8 bg-gray-300"></div>
-              <span className="text-xs font-medium tracking-[0.2em] text-gray-500">FAIR MARKET VALUE ANALYSIS</span>
-              <div className="h-[1px] w-8 bg-gray-300"></div>
+            <div className="inline-flex items-center justify-center space-x-4 mb-6">
+              <div className="h-[1px] w-16 bg-blue-200"></div>
+              <span className="text-xs font-medium tracking-[0.2em] text-blue-600">FAIR MARKET VALUE ANALYSIS</span>
+              <div className="h-[1px] w-16 bg-blue-200"></div>
             </div>
             
-            <h1 className="text-[2.75rem] leading-tight font-light text-gray-900 mb-3">
+            <h1 className="text-5xl font-light text-gray-900 mb-4">
               {compensation.providerName || 'Provider'}
             </h1>
             
             <div className="inline-block">
-              <div className="flex items-center justify-center">
-                <div className="text-base text-gray-600">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="text-lg text-gray-600">
                   <span className="font-normal">{compensation.specialty || 'Not Specified'}</span>
                 </div>
               </div>

@@ -262,6 +262,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('clinicalBase')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -273,6 +274,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('teachingBase')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -284,6 +286,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('researchBase')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -295,6 +298,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('adminBase')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
             </div>
@@ -313,6 +317,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('wrvus')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -324,6 +329,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('wrvuRate')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -335,6 +341,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('qualityBonus')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -346,6 +353,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('patientSatisfactionBonus')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
             </div>
@@ -364,6 +372,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('weekdayCallShifts')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -375,6 +384,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('weekendCallShifts')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -386,6 +396,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('callPayRate')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
             </div>
@@ -404,6 +415,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('deptChairStipend')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -415,6 +427,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('medicalDirectorStipend')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -426,6 +439,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('committeeStipend')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -437,6 +451,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('leadershipHours')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
               <div>
@@ -448,6 +463,7 @@ const CompensationForm = ({ specialty, providerId }: CompensationFormProps) => {
                   type="number"
                   {...register('leadershipRate')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  style={{ textAlign: 'right' }}
                 />
               </div>
             </div>
