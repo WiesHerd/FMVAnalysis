@@ -397,13 +397,22 @@ const MarketData: React.FC = () => {
               border-right: 2px solid #d1d5db !important;
             }
 
+            /* Add continuous vertical lines after Total Cash Compensation and wRVUs sections */
             .market-data-table .ant-table-thead > tr:first-child > th:nth-child(2),
+            .market-data-table .ant-table-thead > tr:nth-child(2) > th:nth-child(4),
             .market-data-table .ant-table-tbody > tr > td:nth-child(5) {
               border-right: 2px solid #d1d5db !important;
             }
 
             .market-data-table .ant-table-thead > tr:first-child > th:nth-child(3),
+            .market-data-table .ant-table-thead > tr:nth-child(2) > th:nth-child(8),
             .market-data-table .ant-table-tbody > tr > td:nth-child(9) {
+              border-right: 2px solid #d1d5db !important;
+            }
+
+            /* Ensure continuous vertical lines in the header */
+            .market-data-table .ant-table-thead > tr:nth-child(2) > th:nth-child(4),
+            .market-data-table .ant-table-thead > tr:nth-child(2) > th:nth-child(8) {
               border-right: 2px solid #d1d5db !important;
             }
 
