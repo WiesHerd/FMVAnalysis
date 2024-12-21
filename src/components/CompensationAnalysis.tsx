@@ -2,6 +2,7 @@ import React, { useState, useMemo, useContext, useCallback, useEffect } from 're
 import { Card } from 'antd';
 import Modal from './Modal';
 import TrashIcon from './TrashIcon';
+import { calculatePercentile } from '../utils/calculations';
 
 // Helper functions
 const calculateMonthsSinceReview = (reviewDate: Date | null): number => {
@@ -139,6 +140,13 @@ interface CompensationAnalysisProps {
     total: number;
     wrvus: number;
     perWrvu: number;
+    components: {
+      baseTotal: number;
+      productivityTotal: number;
+      callTotal: number;
+      adminTotal: number;
+      qualityTotal: number;
+    };
   }>) => void;
 }
 
@@ -666,7 +674,7 @@ const defaultRiskConfig: RiskScoringConfig = {
         
         requiredDocs
           .filter(doc => !presentDocs.includes(doc))
-          .forEach(doc => findings.push(`⚠ Missing: ${doc}`));
+          .forEach(doc => findings.push(`��� Missing: ${doc}`));
 
         // Review date
         const lastReviewDate = docs.lastReviewDate ? new Date(docs.lastReviewDate) : null;
@@ -1074,16 +1082,35 @@ const RiskContextEditor: React.FC<{
 
 // Update the main component to use RiskConfigProvider
 const CompensationAnalysis: React.FC<CompensationAnalysisProps> = ({
-  compensation,
+  compensation: initialCompensation,
   benchmarks,
   onUpdate
 }) => {
+  const [compensation, setCompensation] = useState(initialCompensation);
+
+  const handleUpdate = (updates: Partial<{
+    total: number;
+    wrvus: number;
+    perWrvu: number;
+    components: CompensationComponents;
+  }>) => {
+    const newCompensation = {
+      ...compensation,
+      total: updates.total || compensation.total,
+      wrvus: updates.wrvus || compensation.wrvus,
+      perWrvu: updates.perWrvu || compensation.perWrvu,
+      components: updates.components || compensation.components
+    };
+    setCompensation(newCompensation);
+    onUpdate(newCompensation);
+  };
+
   return (
     <div className="space-y-6">
       <CompensationAnalysisContent 
         compensation={compensation}
         benchmarks={benchmarks}
-        onUpdate={onUpdate}
+        onUpdate={handleUpdate}
       />
     </div>
   );
@@ -1149,12 +1176,43 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
     });
   }, [compensation.components]);
 
+  const getPercentilePosition = (value: number, metric: keyof Benchmark) => {
+    if (!benchmarks?.length) return 0;
+    const benchmarkValues = benchmarks.map(b => Number(b[metric]));
+    return calculatePercentile(value, benchmarkValues);
+  };
+
+  // Update the total display
+  const totalCompensation = Object.values(components).reduce((sum, val) => sum + val, 0);
+
+  // Update the percentile displays
+  const tccPercentile = getPercentilePosition(totalCompensation, 'tcc');
+  const wrvuPercentile = getPercentilePosition(compensation.wrvus, 'wrvus');
+  const cfPercentile = getPercentilePosition(totalCompensation / (compensation.wrvus || 1), 'conversionFactor');
+
   const handleComponentChange = (field: keyof CompensationComponents, value: string) => {
     const numericValue = Number(value.replace(/[^0-9.-]+/g, ''));
-    setComponents(prev => ({
-      ...prev,
+    const newComponents = {
+      ...components,
       [field]: numericValue
-    }));
+    };
+    
+    // Update local state
+    setComponents(newComponents);
+
+    // Calculate new total compensation
+    const newTotal = Object.values(newComponents).reduce((sum, val) => sum + val, 0);
+
+    // Calculate new per wRVU rate
+    const newPerWrvu = compensation.wrvus > 0 ? newTotal / compensation.wrvus : 0;
+
+    // Update parent component with new values
+    onUpdate({
+      total: newTotal,
+      wrvus: compensation.wrvus,
+      perWrvu: newPerWrvu,
+      components: newComponents
+    });
   };
 
   const [riskRules, setRiskRules] = useState<RiskScoreRule[]>([
@@ -1184,48 +1242,6 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
 
   const handleAdjustmentAdd = (adjustment: RiskScoreAdjustment) => {
     setRiskAdjustments(prev => [...prev, adjustment]);
-  };
-
-  const getPercentilePosition = (value: number, metric: keyof Benchmark) => {
-    if (!benchmarks?.length) return 0;
-    
-    // Get benchmark values for each percentile
-    const benchmarkData = [
-      { percentile: 0, value: 0 },
-      { percentile: 10, value: Number(benchmarks[0][metric]) },  // 10th
-      { percentile: 25, value: Number(benchmarks[1][metric]) },  // 25th
-      { percentile: 50, value: Number(benchmarks[2][metric]) },  // 50th
-      { percentile: 75, value: Number(benchmarks[3][metric]) },  // 75th
-      { percentile: 90, value: Number(benchmarks[4][metric]) }   // 90th
-    ];
-
-    // Find which benchmark range the value falls into
-    for (let i = 0; i < benchmarkData.length - 1; i++) {
-      const lower = benchmarkData[i];
-      const upper = benchmarkData[i + 1];
-      
-      if (value <= upper.value) {
-        // Interpolate between the two benchmark points
-        const range = upper.value - lower.value;
-        const position = value - lower.value;
-        const ratio = range === 0 ? 0 : position / range;
-        return lower.percentile + (ratio * (upper.percentile - lower.percentile));
-      }
-    }
-
-    // If value is above 90th percentile
-    const lastBenchmark = benchmarkData[benchmarkData.length - 1];
-    const maxValue = lastBenchmark.value * 1.2; // 20% above 90th percentile is considered 100th
-    
-    if (value >= maxValue) {
-      return 100;
-    }
-
-    // Interpolate between 90th and 100th
-    const range = maxValue - lastBenchmark.value;
-    const position = value - lastBenchmark.value;
-    const ratio = position / range;
-    return lastBenchmark.percentile + (ratio * (100 - lastBenchmark.percentile));
   };
 
   const handleBenchmarkChange = (index: number, field: keyof Benchmark, value: string) => {
