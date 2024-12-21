@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Button } from 'antd';
+import { PrinterOutlined } from '@ant-design/icons';
 import ReviewForm from '../components/ReviewForm';
 import CompensationAnalysis from '../components/CompensationAnalysis';
 
@@ -175,26 +177,56 @@ const CompensationResults: React.FC = () => {
     window.location.reload();
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading...</div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-red-600">{error}</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg text-red-600">{error}</div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <CompensationAnalysis compensation={analysisData} benchmarks={marketData} onUpdate={() => {}} />
+    <div className="min-h-screen bg-gray-50 py-8 print:bg-white print:py-0">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex justify-end mb-6 print:hidden">
+            <Button
+              icon={<PrinterOutlined />}
+              onClick={handlePrint}
+              className="flex items-center"
+            >
+              Print Analysis
+            </Button>
+          </div>
 
-      <section className="mt-8">
-        <ReviewForm
-          providerId={providerId}
-          providerName={providerName}
-          currentRiskLevel={riskLevel}
-          onReviewComplete={handleReviewComplete}
-        />
-      </section>
+          <div className="space-y-6 print:space-y-4">
+            <div className="print:mb-8 avoid-break">
+              <CompensationAnalysis compensation={analysisData} benchmarks={marketData} onUpdate={() => {}} />
+            </div>
+
+            <div className="page-break-before avoid-break">
+              <ReviewForm
+                providerId={providerId}
+                providerName={providerName}
+                currentRiskLevel={riskLevel}
+                onReviewComplete={handleReviewComplete}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
