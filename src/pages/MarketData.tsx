@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Table, Input, Button } from 'antd';
-import { SearchOutlined, UploadOutlined, PrinterOutlined } from '@ant-design/icons';
+import React, { useState, useRef, useEffect } from 'react';
+import { Button, Input, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import Papa from 'papaparse';
-import '../styles/MarketData.css';
+import { UploadOutlined, DownloadOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import { saveAs } from 'file-saver';
+import * as XLSX from 'xlsx';
 
 interface MarketDataRow {
   specialty: string;
@@ -23,287 +23,326 @@ interface MarketDataRow {
 
 const MarketData: React.FC = () => {
   const [data, setData] = useState<MarketDataRow[]>([]);
+  const [filteredData, setFilteredData] = useState<MarketDataRow[]>([]);
   const [searchText, setSearchText] = useState('');
   const [uploadStatus, setUploadStatus] = useState<'success' | 'error' | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load data from localStorage when component mounts
   useEffect(() => {
-    const storedData = localStorage.getItem('marketData');
-    if (storedData) {
+    console.log('Loading market data from storage');
+    const savedData = localStorage.getItem('marketData');
+    if (savedData) {
       try {
-        const parsedData = JSON.parse(storedData);
+        const parsedData = JSON.parse(savedData);
+        console.log('Found saved market data:', parsedData);
         setData(parsedData);
-        console.log('Loaded stored data:', parsedData);
-      } catch (error) {
-        console.error('Error loading stored data:', error);
+        setFilteredData(parsedData);
+      } catch (err) {
+        console.error('Error loading market data:', err);
       }
     }
   }, []);
 
-  const handleFileUpload = (file: File) => {
-    setUploadStatus(null);
-    setStatusMessage('');
-
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setUploadStatus('error');
-      setStatusMessage('Please upload a CSV file');
-      return false;
-    }
-
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        console.log('CSV Parse Results:', results);
-        if (results.data[0]) {
-          console.log('CSV Column Headers:', Object.keys(results.data[0] as object));
-        }
-        
-        if (results.errors.length > 0) {
-          console.error('CSV parsing errors:', results.errors);
-          setUploadStatus('error');
-          setStatusMessage('Error parsing CSV file');
-          return;
-        }
-
-        try {
-          const parsedData = results.data.map((row: any) => {
-            console.log('Raw row data:', row);
-            // Remove any $ signs and commas from values before parsing
-            const cleanValue = (value: string | undefined) => {
-              if (!value) return 0;
-              const cleanStr = value.toString().replace(/[$,]/g, '');
-              return parseFloat(cleanStr) || 0;
-            };
-
-            return {
-              specialty: row.specialty || '',
-              // Total Cash Compensation
-              total_25th: cleanValue(row.p25_total),
-              total_50th: cleanValue(row.p50_total),
-              total_75th: cleanValue(row.p75_total),
-              total_90th: cleanValue(row.p90_total),
-              // wRVUs
-              wrvus_25th: cleanValue(row.p25_wrvu),
-              wrvus_50th: cleanValue(row.p50_wrvu),
-              wrvus_75th: cleanValue(row.p75_wrvu),
-              wrvus_90th: cleanValue(row.p90_wrvu),
-              // Conversion Factors
-              cf_25th: cleanValue(row.p25_cf),
-              cf_50th: cleanValue(row.p50_cf),
-              cf_75th: cleanValue(row.p75_cf),
-              cf_90th: cleanValue(row.p90_cf),
-            };
-          });
-
-          console.log('Parsed data:', parsedData);
-
-          const validData = parsedData.filter(record => {
-            const isValid = record.specialty && 
-              (!isNaN(record.total_50th) || !isNaN(record.total_25th) || !isNaN(record.total_75th) || !isNaN(record.total_90th));
-            
-            if (!isValid) {
-              console.log('Invalid record:', record);
-            }
-            return isValid;
-          });
-
-          console.log('Valid data:', validData);
-
-          if (validData.length === 0) {
-            setUploadStatus('error');
-            setStatusMessage('No valid records found in CSV');
-            return;
-          }
-
-          setData(validData);
-          localStorage.setItem('marketData', JSON.stringify(validData));
-          setUploadStatus('success');
-          setStatusMessage(`Loaded ${validData.length} records from CSV`);
-        } catch (error) {
-          console.error('Data processing error:', error);
-          setUploadStatus('error');
-          setStatusMessage('Error processing CSV data');
-        }
-      },
-      error: (error) => {
-        console.error('CSV reading error:', error);
-        setUploadStatus('error');
-        setStatusMessage('Error reading CSV file');
-      }
-    });
-    return false;
-  };
-
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      handleFileUpload(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result as string;
+          const rows = text.split('\n').filter(row => row.trim());
+          const dataRows = rows.slice(1);
+          const parsedData = dataRows.map(row => {
+            const [specialty, ...values] = row.split(',').map(val => val.trim());
+            const numbers = values.map(val => {
+              const num = Number(val.replace(/[$,]/g, ''));
+              return isNaN(num) ? 0 : num;
+            });
+            const [total25, total50, total75, total90, wrvu25, wrvu50, wrvu75, wrvu90, cf25, cf50, cf75, cf90] = numbers;
+            
+            return {
+              specialty: specialty,
+              total_25th: total25,
+              total_50th: total50,
+              total_75th: total75,
+              total_90th: total90,
+              wrvus_25th: wrvu25,
+              wrvus_50th: wrvu50,
+              wrvus_75th: wrvu75,
+              wrvus_90th: wrvu90,
+              cf_25th: cf25,
+              cf_50th: cf50,
+              cf_75th: cf75,
+              cf_90th: cf90,
+            };
+          }).filter(row => row.specialty && row.specialty.toLowerCase() !== 'specialty');
+
+          setData(parsedData);
+          setFilteredData(parsedData);
+          localStorage.setItem('marketData', JSON.stringify(parsedData));
+          setUploadStatus('success');
+          setStatusMessage('Market data uploaded successfully');
+        } catch (error) {
+          console.error('Error parsing file:', error);
+          setUploadStatus('error');
+          setStatusMessage('Error parsing file. Please check the format.');
+        }
+      };
+      reader.readAsText(file);
     }
   };
+
+  const handleDownloadExcel = () => {
+    const excelData = filteredData.map(row => ({
+      'Specialty': row.specialty,
+      'Total Cash - 25th': row.total_25th || 0,
+      'Total Cash - 50th': row.total_50th || 0,
+      'Total Cash - 75th': row.total_75th || 0,
+      'Total Cash - 90th': row.total_90th || 0,
+      'wRVUs - 25th': row.wrvus_25th || 0,
+      'wRVUs - 50th': row.wrvus_50th || 0,
+      'wRVUs - 75th': row.wrvus_75th || 0,
+      'wRVUs - 90th': row.wrvus_90th || 0,
+      'Conversion Factor - 25th': row.cf_25th || 0,
+      'Conversion Factor - 50th': row.cf_50th || 0,
+      'Conversion Factor - 75th': row.cf_75th || 0,
+      'Conversion Factor - 90th': row.cf_90th || 0,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    
+    const colWidths = [
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+    ];
+    worksheet['!cols'] = colWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Market Data');
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const dataBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(dataBlob, 'market_data.xlsx');
+  };
+
+  const handleClearData = () => {
+    setData([]);
+    setFilteredData([]);
+    localStorage.removeItem('marketData');
+    setUploadStatus(null);
+    setStatusMessage('');
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+    const filtered = data.filter(record => 
+      record.specialty.toLowerCase().includes(value.toLowerCase())
+    );
+    setFilteredData(filtered);
+  };
+
+  // Keep filtered data in sync with main data
+  useEffect(() => {
+    setFilteredData(data);
+  }, [data]);
 
   const columns: ColumnsType<MarketDataRow> = [
     {
       title: 'Specialty',
       dataIndex: 'specialty',
       key: 'specialty',
-      width: 250,
-      fixed: 'left',
-      className: 'specialty-column',
+      sorter: (a, b) => a.specialty.localeCompare(b.specialty),
+      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div className="p-2">
+          <Input
+            placeholder="Search specialty"
+            value={selectedKeys[0]}
+            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
+            onPressEnter={() => confirm()}
+            className="mb-2 block"
+          />
+          <div className="flex justify-between">
+            <Button
+              type="primary"
+              onClick={() => confirm()}
+              size="small"
+              className="bg-blue-500"
+            >
+              Filter
+            </Button>
+            <Button
+              onClick={() => clearFilters?.()}
+              size="small"
+            >
+              Reset
+            </Button>
+          </div>
+        </div>
+      ),
+      filterIcon: (filtered: boolean) => (
+        <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
+      ),
+      onFilter: (value, record) =>
+        record.specialty.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: 'Total Cash Compensation',
+      title: (
+        <div className="bg-gray-50 font-medium text-gray-900">
+          Total Cash Compensation
+        </div>
+      ),
+      colSpan: 4,
       children: [
         {
           title: '25th',
           dataIndex: 'total_25th',
           key: 'total_25th',
-          width: 130,
-          align: 'right',
-          render: (value: number) => value ? `$${value.toLocaleString()}` : '-',
+          render: (value: number) => `$${value.toLocaleString()}`,
         },
         {
           title: '50th',
           dataIndex: 'total_50th',
           key: 'total_50th',
-          width: 130,
-          align: 'right',
-          render: (value: number) => value ? `$${value.toLocaleString()}` : '-',
+          render: (value: number) => `$${value.toLocaleString()}`,
         },
         {
           title: '75th',
           dataIndex: 'total_75th',
           key: 'total_75th',
-          width: 130,
-          align: 'right',
-          render: (value: number) => value ? `$${value.toLocaleString()}` : '-',
+          render: (value: number) => `$${value.toLocaleString()}`,
         },
         {
           title: '90th',
           dataIndex: 'total_90th',
           key: 'total_90th',
-          width: 130,
-          align: 'right',
-          render: (value: number) => value ? `$${value.toLocaleString()}` : '-',
-          className: 'section-end',
+          render: (value: number) => `$${value.toLocaleString()}`,
         },
       ],
     },
     {
-      title: 'wRVUs',
+      title: (
+        <div className="bg-gray-50 font-medium text-gray-900">
+          wRVUs
+        </div>
+      ),
+      colSpan: 4,
       children: [
         {
           title: '25th',
           dataIndex: 'wrvus_25th',
           key: 'wrvus_25th',
-          width: 100,
-          align: 'right',
-          render: (value: number) => value ? value.toLocaleString() : '-',
+          render: (value: number) => value.toLocaleString(),
         },
         {
           title: '50th',
           dataIndex: 'wrvus_50th',
           key: 'wrvus_50th',
-          width: 100,
-          align: 'right',
-          render: (value: number) => value ? value.toLocaleString() : '-',
+          render: (value: number) => value.toLocaleString(),
         },
         {
           title: '75th',
           dataIndex: 'wrvus_75th',
           key: 'wrvus_75th',
-          width: 100,
-          align: 'right',
-          render: (value: number) => value ? value.toLocaleString() : '-',
+          render: (value: number) => value.toLocaleString(),
         },
         {
           title: '90th',
           dataIndex: 'wrvus_90th',
           key: 'wrvus_90th',
-          width: 100,
-          align: 'right',
-          render: (value: number) => value ? value.toLocaleString() : '-',
-          className: 'section-end',
+          render: (value: number) => value.toLocaleString(),
         },
       ],
     },
     {
-      title: 'Conversion Factor',
+      title: (
+        <div className="bg-gray-50 font-medium text-gray-900">
+          Conversion Factor
+        </div>
+      ),
+      colSpan: 4,
       children: [
         {
           title: '25th',
           dataIndex: 'cf_25th',
           key: 'cf_25th',
-          width: 100,
-          align: 'right',
-          render: (value: number) => value ? `$${value.toFixed(2)}` : '-',
+          render: (value: number) => `$${value.toFixed(2)}`,
         },
         {
           title: '50th',
           dataIndex: 'cf_50th',
           key: 'cf_50th',
-          width: 100,
-          align: 'right',
-          render: (value: number) => value ? `$${value.toFixed(2)}` : '-',
+          render: (value: number) => `$${value.toFixed(2)}`,
         },
         {
           title: '75th',
           dataIndex: 'cf_75th',
           key: 'cf_75th',
-          width: 100,
-          align: 'right',
-          render: (value: number) => value ? `$${value.toFixed(2)}` : '-',
+          render: (value: number) => `$${value.toFixed(2)}`,
         },
         {
           title: '90th',
           dataIndex: 'cf_90th',
           key: 'cf_90th',
-          width: 100,
-          align: 'right',
-          render: (value: number) => value ? `$${value.toFixed(2)}` : '-',
+          render: (value: number) => `$${value.toFixed(2)}`,
         },
       ],
-    },
+    }
   ];
 
-  const filteredData = data.filter(item =>
-    item.specialty.toLowerCase().includes(searchText.toLowerCase())
-  );
-
   return (
-    <div className="h-full">
-      <div className="print:hidden">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold text-gray-900">Market Data Management</h2>
+    <div className="bg-white rounded-lg shadow-sm">
+      <div className="px-12">
+        <h1 className="text-xl font-semibold text-gray-900 mb-1">Market Data Management Preview</h1>
+        <p className="text-sm text-gray-500 mb-6">Upload and manage market data</p>
+
+        <div className="flex justify-between items-center mb-6">
           <div className="flex gap-4">
             <Button
               type="primary"
               icon={<UploadOutlined />}
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-500"
             >
               Upload Market Data
             </Button>
+
             <Button
-              icon={<PrinterOutlined />}
-              onClick={() => window.print()}
-              className="flex items-center border-gray-300"
+              icon={<DownloadOutlined />}
+              onClick={handleDownloadExcel}
+              disabled={data.length === 0}
             >
-              Print Market Data
+              Download Excel
             </Button>
+
             <Button
-              onClick={() => {
-                setData([]);
-                localStorage.removeItem('marketData');
-                setUploadStatus(null);
-                setStatusMessage('');
-              }}
-              className="flex items-center border-gray-300"
+              icon={<DeleteOutlined />}
+              onClick={handleClearData}
+              disabled={data.length === 0}
             >
               Clear Data
             </Button>
           </div>
+
+          <Input
+            placeholder="Search specialties..."
+            prefix={<SearchOutlined className="text-gray-400" />}
+            value={searchText}
+            onChange={e => handleSearch(e.target.value)}
+            style={{ width: 250 }}
+            className="rounded-md"
+          />
         </div>
 
         {uploadStatus && (
@@ -326,47 +365,58 @@ const MarketData: React.FC = () => {
           accept=".csv"
           className="hidden"
         />
-      </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-4 py-3 border-b border-gray-200 print:hidden">
-          <div className="flex justify-between items-center">
-            <div className="text-lg font-medium text-gray-900">Data Preview</div>
-            {data.length > 0 && (
-              <Input
-                placeholder="Search specialties..."
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)}
-                className="w-72"
-              />
-            )}
-          </div>
-        </div>
+        <Table<MarketDataRow>
+          columns={columns}
+          dataSource={filteredData}
+          rowKey="specialty"
+          pagination={{ pageSize: 10 }}
+          bordered
+          className="market-data-table"
+          scroll={{ x: 'max-content' }}
+          style={{
+            '--border-color': '#e5e7eb',
+            '--divider-color': '#d1d5db'
+          } as React.CSSProperties}
+        />
 
-        <div className="px-4 py-3">
-          {data.length > 0 ? (
-            <Table<MarketDataRow>
-              columns={columns}
-              dataSource={filteredData}
-              rowKey="specialty"
-              pagination={false}
-              scroll={{ x: 'max-content', y: 'calc(100vh - 300px)' }}
-              bordered
-              size="middle"
-              className="market-data-table"
-            />
-          ) : (
-            <div className="text-center py-12">
-              <div className="flex flex-col items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605" />
-                </svg>
-                <div className="text-gray-500">No market data loaded. Please upload a CSV file.</div>
-              </div>
-            </div>
-          )}
-        </div>
+        <style>
+          {`
+            .market-data-table .ant-table {
+              border: 1px solid #e5e7eb;
+            }
+
+            /* Remove all default vertical borders */
+            .market-data-table .ant-table-cell {
+              border-right: none !important;
+            }
+
+            /* Add vertical lines after Specialty and after each major section */
+            .market-data-table .ant-table-thead > tr:first-child > th:nth-child(1),
+            .market-data-table .ant-table-tbody > tr > td:nth-child(1) {
+              border-right: 2px solid #d1d5db !important;
+            }
+
+            .market-data-table .ant-table-thead > tr:first-child > th:nth-child(2),
+            .market-data-table .ant-table-tbody > tr > td:nth-child(5) {
+              border-right: 2px solid #d1d5db !important;
+            }
+
+            .market-data-table .ant-table-thead > tr:first-child > th:nth-child(3),
+            .market-data-table .ant-table-tbody > tr > td:nth-child(9) {
+              border-right: 2px solid #d1d5db !important;
+            }
+
+            /* Keep the header styling */
+            .market-data-table .ant-table-thead > tr:first-child > th {
+              background-color: #f3f4f6;
+              font-weight: 600;
+              text-transform: uppercase;
+              font-size: 13px;
+              letter-spacing: 0.5px;
+            }
+          `}
+        </style>
       </div>
     </div>
   );
