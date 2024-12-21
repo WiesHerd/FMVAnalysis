@@ -1,94 +1,110 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Button, Dropdown } from 'antd';
+import { TeamOutlined, LineChartOutlined, UnorderedListOutlined, HomeOutlined } from '@ant-design/icons';
 import FMVIcon from './FMVIcon';
-import '../styles/FMVIcon.css';
 
 const Header: React.FC = () => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const location = useLocation();
 
-  const isActive = (path: string) => location.pathname === path;
+  // Don't show header on home page
+  if (location.pathname === '/') {
+    return null;
+  }
+
+  const items = [
+    {
+      key: 'provider-listing',
+      label: (
+        <Link to="/dashboard" className="block p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
+              <UnorderedListOutlined className="text-blue-500 text-xl" />
+            </div>
+            <div>
+              <div className="text-gray-900 font-medium">FMV Tracking</div>
+              <div className="text-gray-500 text-sm">View and manage all providers</div>
+            </div>
+          </div>
+        </Link>
+      ),
+    },
+    {
+      key: 'provider-data',
+      label: (
+        <Link to="/employee-data" className="block p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
+              <TeamOutlined className="text-blue-500 text-xl" />
+            </div>
+            <div>
+              <div className="text-gray-900 font-medium">Provider Data</div>
+              <div className="text-gray-500 text-sm">Manage provider information</div>
+            </div>
+          </div>
+        </Link>
+      ),
+    },
+    {
+      key: 'market-data',
+      label: (
+        <Link to="/market-data" className="block p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center">
+              <LineChartOutlined className="text-blue-500 text-xl" />
+            </div>
+            <div>
+              <div className="text-gray-900 font-medium">Market Data</div>
+              <div className="text-gray-500 text-sm">Update compensation benchmarks</div>
+            </div>
+          </div>
+        </Link>
+      ),
+    }
+  ];
 
   return (
     <header className="bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            <FMVIcon className="header-icon" />
-            <div className="flex flex-col">
-              <h1 className="text-4xl font-bold text-gray-900 leading-tight">
-                Fair Market Value Review
-              </h1>
-              <p className="text-sm text-gray-500">
-                Tracking and Managing System
-              </p>
-            </div>
+      <div className="px-12">
+        <div className="flex justify-between items-center py-3">
+          <div>
+            <Link to="/" className="flex items-center gap-2">
+              <FMVIcon className="w-6 h-6 text-blue-500" />
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900 m-0">Fair Market Value Review</h1>
+                <p className="text-xs text-gray-500 m-0">Tracking and Managing System</p>
+              </div>
+            </Link>
           </div>
 
-          <div className="flex items-center space-x-6">
-            <Link 
-              to="/" 
-              className={`flex items-center text-lg ${
-                isActive('/') 
-                  ? 'text-blue-600 font-medium'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <svg className="w-7 h-7 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Select Provider
-            </Link>
-
-            <div className="relative">
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className={`flex items-center px-6 py-2.5 rounded-lg text-lg ${
-                  isActive('/provider-data') || isActive('/market-data')
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                }`}
+          <div className="flex gap-2">
+            <Link to="/">
+              <Button 
+                type="primary"
+                className="bg-blue-500"
+                icon={<HomeOutlined />}
               >
-                <svg className="w-7 h-7 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
+                Home
+              </Button>
+            </Link>
+            <Dropdown 
+              menu={{ items }} 
+              placement="bottomRight"
+              trigger={['click']}
+              overlayStyle={{ 
+                width: '320px',
+                padding: '8px',
+                borderRadius: '12px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+              }}
+            >
+              <Button
+                type="primary"
+                className="bg-blue-500"
+              >
                 Data Management
-                <svg className="w-5 h-5 ml-2" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {isDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <Link
-                    to="/provider-data"
-                    className={`flex items-center px-4 py-3 hover:bg-gray-50 border-b border-gray-100 ${
-                      isActive('/provider-data') ? 'bg-blue-50' : ''
-                    }`}
-                  >
-                    <div>
-                      <div className={`font-medium ${isActive('/provider-data') ? 'text-blue-600' : 'text-gray-900'}`}>
-                        Provider Data
-                      </div>
-                      <div className="text-sm text-gray-500">Manage provider information</div>
-                    </div>
-                  </Link>
-                  <Link
-                    to="/market-data"
-                    className={`flex items-center px-4 py-3 hover:bg-gray-50 ${
-                      isActive('/market-data') ? 'bg-blue-50' : ''
-                    }`}
-                  >
-                    <div>
-                      <div className={`font-medium ${isActive('/market-data') ? 'text-blue-600' : 'text-gray-900'}`}>
-                        Market Data
-                      </div>
-                      <div className="text-sm text-gray-500">Update compensation benchmarks</div>
-                    </div>
-                  </Link>
-                </div>
-              )}
-            </div>
+              </Button>
+            </Dropdown>
           </div>
         </div>
       </div>

@@ -1,8 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Table, Button, Input } from 'antd';
-import { UploadOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
+import { Table, Button, Input, message } from 'antd';
+import { UploadOutlined, DownloadOutlined, SearchOutlined, DeleteOutlined } from '@ant-design/icons';
 import Papa, { ParseResult } from 'papaparse';
 import { formatCurrency, formatNumber } from '../utils/formatters';
+import FMVIcon from '../components/FMVIcon';
+import * as XLSX from 'xlsx';
 
 interface EmployeeData {
   employee_id: string;
@@ -18,6 +20,7 @@ interface EmployeeData {
 
 const EmployeeData: React.FC = () => {
   const [employeeData, setEmployeeData] = useState<EmployeeData[]>([]);
+  const [filteredData, setFilteredData] = useState<EmployeeData[]>([]);
   const [searchText, setSearchText] = useState('');
   const [uploadStatus, setUploadStatus] = useState<'success' | 'error' | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
@@ -113,36 +116,89 @@ const EmployeeData: React.FC = () => {
     }
   };
 
+  const handleDownloadExcel = () => {
+    const workbook = XLSX.utils.book_new();
+    
+    // Format the data for Excel
+    const excelData = filteredData.map(provider => ({
+      'Provider ID': provider.employee_id,
+      'Name': provider.full_name,
+      'Specialty': provider.specialty,
+      'Base Pay': formatCurrency(provider.base_pay),
+      'wRVU Incentive': formatCurrency(provider.wrvu_incentive),
+      'Quality': formatCurrency(provider.quality_payments),
+      'Admin': formatCurrency(provider.admin_payments),
+      'Annual wRVUs': formatNumber(provider.annual_wrvus),
+      'Conversion Factor': formatCurrency(provider.conversion_factor)
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+    // Set column widths
+    const columnWidths = [
+      { wch: 12 }, // Provider ID
+      { wch: 20 }, // Name
+      { wch: 15 }, // Specialty
+      { wch: 12 }, // Base Pay
+      { wch: 15 }, // wRVU Incentive
+      { wch: 12 }, // Quality
+      { wch: 12 }, // Admin
+      { wch: 15 }, // Annual wRVUs
+      { wch: 15 }  // Conversion Factor
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Provider Data');
+    XLSX.writeFile(workbook, 'provider_data.xlsx');
+  };
+
+  const handleClearData = () => {
+    setEmployeeData([]);
+    setFilteredData([]);
+    localStorage.removeItem('employeeData');
+    message.success('Data cleared successfully');
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchText(value);
+    const filtered = employeeData.filter(record => 
+      record.full_name.toLowerCase().includes(value.toLowerCase()) ||
+      record.specialty.toLowerCase().includes(value.toLowerCase())
+    );
+    setFilteredData(filtered);
+  };
+
+  useEffect(() => {
+    setFilteredData(employeeData);
+  }, [employeeData]);
+
+  const formatConversionFactor = (value: number) => {
+    return `$${value.toFixed(2)}`;
+  };
+
   const columns = [
     {
       title: 'Provider Information',
-      align: 'left' as const,
       children: [
         {
           title: 'Provider ID',
           dataIndex: 'employee_id',
           key: 'employee_id',
-          width: 150,
-          align: 'left' as const,
-          className: 'specialty-column',
-          fixed: 'left' as const,
+          width: 120,
           sorter: (a: EmployeeData, b: EmployeeData) => a.employee_id.localeCompare(b.employee_id)
         },
         {
           title: 'Name',
           dataIndex: 'full_name',
           key: 'full_name',
-          width: 200,
-          align: 'left' as const,
+          width: 150,
           sorter: (a: EmployeeData, b: EmployeeData) => a.full_name.localeCompare(b.full_name)
         },
         {
           title: 'Specialty',
           dataIndex: 'specialty',
           key: 'specialty',
-          width: 200,
-          align: 'left' as const,
-          className: 'section-end',
+          width: 150,
           sorter: (a: EmployeeData, b: EmployeeData) => a.specialty.localeCompare(b.specialty)
         }
       ]
@@ -185,8 +241,7 @@ const EmployeeData: React.FC = () => {
           width: 120,
           align: 'right' as const,
           render: (value: number) => formatCurrency(value),
-          sorter: (a: EmployeeData, b: EmployeeData) => a.admin_payments - b.admin_payments,
-          className: 'section-end'
+          sorter: (a: EmployeeData, b: EmployeeData) => a.admin_payments - b.admin_payments
         }
       ]
     },
@@ -209,90 +264,135 @@ const EmployeeData: React.FC = () => {
           key: 'conversion_factor',
           width: 120,
           align: 'right' as const,
-          render: (value: number) => formatCurrency(value),
+          render: (value: number) => formatConversionFactor(value),
           sorter: (a: EmployeeData, b: EmployeeData) => a.conversion_factor - b.conversion_factor
         }
       ]
     }
   ];
 
-  const filteredData = employeeData.filter(item =>
-    item.full_name.toLowerCase().includes(searchText.toLowerCase()) ||
-    item.employee_id.toLowerCase().includes(searchText.toLowerCase()) ||
-    item.specialty.toLowerCase().includes(searchText.toLowerCase())
-  );
-
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Provider Data Management</h1>
-      
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Provider Data Preview</h2>
-              <p className="text-sm text-gray-500">Upload and manage provider data</p>
-            </div>
-            <div className="flex gap-4">
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-blue-500"
-              >
-                Upload Provider Data
-              </Button>
-              <Button
-                icon={<PrinterOutlined />}
-                className="border-gray-300"
-              >
-                Print Provider Data
-              </Button>
-            </div>
+    <div className="bg-white rounded-lg shadow-sm">
+      <div className="px-12">
+        <h1 className="text-xl font-semibold text-gray-900 mb-1">Provider Data Management Preview</h1>
+        <p className="text-sm text-gray-500 mb-6">Upload and manage provider data</p>
+
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex gap-4">
+            <Button
+              type="primary"
+              icon={<UploadOutlined />}
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-blue-500"
+            >
+              Upload Provider Data
+            </Button>
+
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleDownloadExcel}
+            >
+              Download Excel
+            </Button>
+
+            <Button
+              icon={<DeleteOutlined />}
+              onClick={handleClearData}
+            >
+              Clear Data
+            </Button>
           </div>
 
-          <div className="flex justify-end mb-4">
-            <Input
-              placeholder="Search providers..."
-              prefix={<SearchOutlined className="text-gray-400" />}
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              style={{ width: 250 }}
-              className="rounded-md"
-            />
-          </div>
-
-          {uploadStatus && (
-            <div className="mb-4">
-              <div className={`px-4 py-2 rounded-md text-sm inline-flex items-center gap-2 ${
-                uploadStatus === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  uploadStatus === 'success' ? 'bg-green-500' : 'bg-red-500'
-                }`}></div>
-                {statusMessage}
-              </div>
-            </div>
-          )}
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileInputChange}
-            accept=".csv"
-            className="hidden"
-          />
-
-          <Table
-            columns={columns}
-            dataSource={filteredData}
-            rowKey="employee_id"
-            pagination={{ pageSize: 10 }}
-            bordered
-            className="provider-table"
-            scroll={{ x: 'max-content' }}
+          <Input
+            placeholder="Search providers..."
+            prefix={<SearchOutlined className="text-gray-400" />}
+            value={searchText}
+            onChange={e => handleSearch(e.target.value)}
+            style={{ width: 250 }}
+            className="rounded-md"
           />
         </div>
+
+        {uploadStatus && (
+          <div className="mb-4">
+            <div className={`px-4 py-2 rounded-md text-sm inline-flex items-center gap-2 ${
+              uploadStatus === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                uploadStatus === 'success' ? 'bg-green-500' : 'bg-red-500'
+              }`}></div>
+              {statusMessage}
+            </div>
+          </div>
+        )}
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileInputChange}
+          accept=".csv"
+          className="hidden"
+        />
+
+        <style>
+          {`
+            .provider-table .ant-table {
+              border: 1px solid #e5e7eb !important;
+            }
+            
+            /* Regular column headers */
+            .provider-table .ant-table-thead > tr > th {
+              background-color: #f9fafb !important;
+              border-bottom: 1px solid #e5e7eb;
+              font-weight: 500;
+            }
+
+            /* Main section headers */
+            .provider-table .ant-table-thead > tr:first-child > th {
+              background-color: #f3f4f6 !important;
+              font-weight: 600;
+              border-bottom: 2px solid #e5e7eb;
+              text-align: center !important;
+              padding: 12px 16px;
+              text-transform: uppercase;
+              font-size: 13px;
+              letter-spacing: 0.5px;
+            }
+
+            /* Cell borders */
+            .provider-table .ant-table-cell {
+              border-color: #e5e7eb !important;
+            }
+
+            /* Section dividers - strong vertical lines */
+            .provider-table .ant-table-thead > tr > th:nth-child(4),
+            .provider-table .ant-table-thead > tr > th:nth-child(8),
+            .provider-table .ant-table-tbody > tr > td:nth-child(4),
+            .provider-table .ant-table-tbody > tr > td:nth-child(8) {
+              border-left: 2px solid #d1d5db !important;
+            }
+
+            /* Hover effect on rows */
+            .provider-table .ant-table-tbody > tr:hover > td {
+              background-color: #f9fafb !important;
+            }
+
+            /* Even rows for better readability */
+            .provider-table .ant-table-tbody > tr:nth-child(even) > td {
+              background-color: #fafafa;
+            }
+          `}
+        </style>
+
+        <Table
+          columns={columns}
+          dataSource={filteredData}
+          rowKey="employee_id"
+          pagination={{ pageSize: 10 }}
+          bordered
+          className="provider-table"
+          scroll={{ x: 'max-content' }}
+        />
       </div>
     </div>
   );

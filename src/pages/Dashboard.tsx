@@ -62,9 +62,10 @@ interface ProviderMetrics {
 
 interface DashboardMetrics {
   totalProviders: number;
-  atRiskProviders: number;
+  highRiskProviders: number;
   pendingReviews: number;
   completedReviews: number;
+  missingBenchmarksCount: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -76,9 +77,10 @@ const Dashboard: React.FC = () => {
   const [providersWithoutMarketData, setProvidersWithoutMarketData] = useState<string[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalProviders: 0,
-    atRiskProviders: 0,
+    highRiskProviders: 0,
     pendingReviews: 0,
-    completedReviews: 0
+    completedReviews: 0,
+    missingBenchmarksCount: 0
   });
 
   // Load review data from localStorage
@@ -251,9 +253,10 @@ const Dashboard: React.FC = () => {
       // Update metrics
       setMetrics({
         totalProviders: calculatedMetrics.length,
-        atRiskProviders: calculatedMetrics.filter(p => p.has_benchmarks && p.risk_level === 'High').length,
+        highRiskProviders: calculatedMetrics.filter(p => p.has_benchmarks && p.risk_level === 'High').length,
         pendingReviews: calculatedMetrics.filter(p => p.has_benchmarks && p.status === 'Pending').length,
-        completedReviews: calculatedMetrics.filter(p => p.has_benchmarks && (p.status === 'Approved' || p.status === 'Rejected')).length
+        completedReviews: calculatedMetrics.filter(p => p.has_benchmarks && (p.status === 'Approved' || p.status === 'Rejected')).length,
+        missingBenchmarksCount: missingProviders.length
       });
     }
   }, [providers, marketData]);
@@ -389,78 +392,83 @@ const Dashboard: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">FMV Review Dashboard</h1>
-      
-      <div className="grid grid-cols-4 gap-6">
-        <Card className="shadow-sm">
-          <div className="flex items-center">
-            <UsergroupAddOutlined className="text-2xl text-blue-500 mr-4" />
+    <div className="px-12 py-6">
+      {/* Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <UsergroupAddOutlined className="text-blue-500 text-xl" />
+            </div>
             <div>
-              <div className="text-sm text-gray-600">Total Providers</div>
+              <div className="text-sm text-gray-500">Total Providers</div>
               <div className="text-2xl font-semibold">{metrics.totalProviders}</div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="shadow-sm">
-          <div className="flex items-center">
-            <AlertOutlined className="text-2xl text-red-500 mr-4" />
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="bg-red-50 p-3 rounded-lg">
+              <AlertOutlined className="text-red-500 text-xl" />
+            </div>
             <div>
-              <div className="text-sm text-gray-600">High Risk</div>
-              <div className="text-2xl font-semibold">{metrics.atRiskProviders}</div>
+              <div className="text-sm text-gray-500">High Risk</div>
+              <div className="text-2xl font-semibold">{metrics.highRiskProviders}</div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="shadow-sm">
-          <div className="flex items-center">
-            <ClockCircleOutlined className="text-2xl text-yellow-500 mr-4" />
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="bg-yellow-50 p-3 rounded-lg">
+              <ClockCircleOutlined className="text-yellow-500 text-xl" />
+            </div>
             <div>
-              <div className="text-sm text-gray-600">Pending Reviews</div>
+              <div className="text-sm text-gray-500">Pending Reviews</div>
               <div className="text-2xl font-semibold">{metrics.pendingReviews}</div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="shadow-sm">
-          <div className="flex items-center">
-            <CheckCircleOutlined className="text-2xl text-green-500 mr-4" />
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="bg-green-50 p-3 rounded-lg">
+              <CheckCircleOutlined className="text-green-500 text-xl" />
+            </div>
             <div>
-              <div className="text-sm text-gray-600">Completed Reviews</div>
+              <div className="text-sm text-gray-500">Completed Reviews</div>
               <div className="text-2xl font-semibold">{metrics.completedReviews}</div>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
+      {/* Provider Status Section */}
+      <div className="bg-white rounded-lg shadow-sm">
+        <div className="px-6 py-4">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Provider FMV Status</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Provider FMV Status</h2>
               <p className="text-sm text-gray-500">Review and manage provider compensation analysis</p>
             </div>
-          </div>
-
-          <div className="flex justify-between items-center mb-4">
-            <Button
-              type={showMissingBenchmarksOnly ? "primary" : "default"}
-              onClick={() => setShowMissingBenchmarksOnly(!showMissingBenchmarksOnly)}
-              className={showMissingBenchmarksOnly ? "bg-blue-500" : ""}
-              icon={<WarningOutlined />}
-            >
-              {showMissingBenchmarksOnly ? "Show All Providers" : `Show Missing Benchmarks Only (${providersWithoutMarketData.length})`}
-            </Button>
-
-            <Input
-              placeholder="Search providers or specialties..."
-              prefix={<SearchOutlined className="text-gray-400" />}
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              style={{ width: 250 }}
-              className="rounded-md"
-            />
+            <div className="flex gap-4 items-center">
+              <Button 
+                icon={<WarningOutlined />}
+                onClick={() => setShowMissingBenchmarksOnly(!showMissingBenchmarksOnly)}
+                className={showMissingBenchmarksOnly ? 'border-blue-500 text-blue-500' : ''}
+              >
+                Show Missing Benchmarks Only ({metrics.missingBenchmarksCount})
+              </Button>
+              <Input
+                placeholder="Search providers or specialties..."
+                prefix={<SearchOutlined className="text-gray-400" />}
+                style={{ width: 300 }}
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                className="rounded-md"
+              />
+            </div>
           </div>
 
           <Table
@@ -468,7 +476,6 @@ const Dashboard: React.FC = () => {
             dataSource={filteredProviderMetrics}
             rowKey="id"
             pagination={{ pageSize: 10 }}
-            bordered
             className="provider-table"
           />
         </div>

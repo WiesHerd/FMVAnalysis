@@ -1,0 +1,172 @@
+[33mcommit f6a4f7a9a5407736cb12488356900f060b940bbc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mui-improvements[m[33m)[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Sat Dec 21 09:01:04 2024 -0700
+
+    feat: implement dynamic percentile updates for compensation components
+
+[33mcommit 726154fda82492cf4bf95f3928830b16f42e9552[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Sat Dec 21 09:00:47 2024 -0700
+
+    feat: implement dynamic percentile updates for compensation components
+    
+    - Add calculatePercentile utility function for accurate percentile calculations
+    
+    - Update CompensationAnalysis component to handle dynamic updates
+    
+    - Implement real-time percentile recalculation when editing components
+    
+    - Fix state management between parent and child components
+    
+    - Add proper type definitions for compensation updates
+
+[33mcommit f59e5cac77906628442a095790a036247ec13037[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Sat Dec 21 06:51:19 2024 -0700
+
+    Remove duplicate provider name and add print functionality to CompensationResults
+
+[33mcommit ac7800865358fa9beea41001a45755f421ef1be8[m
+Merge: 47ce4f6e 8a5777d5
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Fri Dec 20 15:34:52 2024 -0700
+
+    UI improvements: Updated compensation components layout, risk analysis styling, and header organization
+
+[33mcommit 47ce4f6e7ba357ca6ba42679d1bbb7224b1b4853[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Fri Dec 20 15:25:46 2024 -0700
+
+    UI improvements: Removed redundant headers and orange button, updated risk analysis styling
+
+[33mcommit 7a2af0c3d9166b520cc39f7e312e590827f5e218[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Fri Dec 20 14:11:02 2024 -0700
+
+    Implement risk assessment system with scoring and findings tracking. Add RiskModal component for risk factor updates. Update CompensationResults to integrate risk assessment functionality.
+
+[33mcommit 3f70ed0a316e1e08e737397b9efa3be2ff958688[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Fri Dec 20 12:43:06 2024 -0700
+
+    Add total risk score column to Provider FMV Status table. Enhanced risk assessment visibility by displaying numerical risk scores with color-coded indicators. Improved sorting and filtering capabilities for better risk management.
+
+[33mcommit 4e3e5d41db11dc41c1d767ea22d88e6b6929a462[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Fri Dec 20 10:06:40 2024 -0700
+
+    Added search functionality and table borders to FMV Review Dashboard. Fixed individual dashboard data loading and error handling. Added formatter utilities for consistent number formatting.
+
+[33mcommit bf83c8cd3e2d6680908562ac38e9ea1e37e09dda[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Fri Dec 20 08:52:51 2024 -0700
+
+    Implemented risk point selectors in Clinical Compensation Risk modal, fixed modal rendering, and improved UI consistency
+
+[33mcommit aa33fe75841f5c87b762da944a2d5ef5c4afe170[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Fri Dec 20 07:41:58 2024 -0700
+
+    UI improvements: Enhanced header styling, improved table alignments, and consistent card designs
+
+[33mcommit 6461b73d9c81ef2facfe85bfed9e1e978f687577[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Fri Dec 20 07:08:06 2024 -0700
+
+    Complete snapshot of all files - including employee data icon changes and all project files
+
+[33mcommit 8a5777d58660711f216b63769048da11f832a955[m[33m ([m[1;31morigin/master[m[33m, [m[1;32mmaster[m[33m)[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 21:18:22 2024 -0700
+
+    Fix TypeScript configuration and update Vercel build command
+
+[33mcommit 447f33ccc1998f79cb46ab492f337117647a9227[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 21:16:15 2024 -0700
+
+    Fix Vercel build permissions for TypeScript compiler
+
+[33mcommit 3c70991344d5d97ffb2926af1d97d7947264784f[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 21:14:54 2024 -0700
+
+    Update Employee Data screen styling to match Market Data screen exactly
+
+[33mcommit e65cf1ef0ce119e5bdfa38eb802b9b035bd6ffcd[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 21:08:39 2024 -0700
+
+    Adjust Employee Data Management header position to match Market Data screen
+
+[33mcommit 94e4eb8367e804dcaac3268f193025cd00bc63fb[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 21:01:22 2024 -0700
+
+    Remove alert messages to match Market Data screen behavior
+
+[33mcommit a1524325b33160a1709b6676d8d77ef84a6309fd[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 20:55:26 2024 -0700
+
+    Update table colors to exactly match Market Data screen
+
+[33mcommit fca68c9f075fc139fa8b13b96232ca8fc13029d6[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 20:23:08 2024 -0700
+
+    Update build configuration for Vercel
+
+[33mcommit 24f1fa349b1e2635b29ee0c521ffa6bed0438270[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 20:21:33 2024 -0700
+
+    Update routing configuration for Vercel deployment
+
+[33mcommit f8a569bd9330e464d4eaf94d2726f6c5509528e0[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 20:15:43 2024 -0700
+
+    Update build configuration and fix base URL
+
+[33mcommit 9bc9fed63e55d96d6127c9017c4a32d631492a8f[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 20:10:47 2024 -0700
+
+    Update Vercel configuration and add Node.js version
+
+[33mcommit 5b56f0aecb27305f9ba669a48dfd614aca96ecec[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 20:06:37 2024 -0700
+
+    Simplify Vercel and Vite configurations
+
+[33mcommit 048dc77504e128210798e1b91da6c75bd23e8591[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 20:04:21 2024 -0700
+
+    Update Vercel and Vite configurations
+
+[33mcommit 7cbc29fd311e8daed91b1edef019f33e971683cb[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 20:01:55 2024 -0700
+
+    Configure app for production deployment
+
+[33mcommit 65d1be0fd2187ad831e83e1f052c831cad56628a[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 19:55:46 2024 -0700
+
+    Initial commit with .gitignore
+
+[33mcommit a534128e666a895970469919c657fd66019e85c3[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Thu Dec 19 18:41:11 2024 -0700
+
+    Improve number formatting and header alignment in compensation components
+
+[33mcommit 3a059651379cc3a77c6fc5c90f30c7f1806a5667[m
+Author: Wieslaw Herdzik <wherdzik@gmail.com>
+Date:   Wed Dec 18 09:28:36 2024 -0700
+
+    Fixed percentile calculation and visualization
