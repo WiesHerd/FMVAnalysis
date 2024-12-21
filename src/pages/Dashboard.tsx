@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Tag, Button, Input } from 'antd';
+import { Card, Table, Tag, Button, Input, Select, Slider, Space, Switch } from 'antd';
 import { Link } from 'react-router-dom';
-import { UsergroupAddOutlined, AlertOutlined, CheckCircleOutlined, ClockCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
+import { UsergroupAddOutlined, AlertOutlined, CheckCircleOutlined, ClockCircleOutlined, SearchOutlined, WarningOutlined, FilterOutlined } from '@ant-design/icons';
 import '../styles/ProviderTable.css';
 import { formatCurrency, formatNumber } from '../utils/formatters';
 
@@ -82,6 +82,17 @@ const Dashboard: React.FC = () => {
     completedReviews: 0,
     missingBenchmarksCount: 0
   });
+
+  // Update filters state to include specialty and missing benchmarks
+  const [filters, setFilters] = useState({
+    tccRange: [0, 100],
+    wrvuRange: [0, 100],
+    riskLevels: [] as string[],
+    statuses: [] as string[],
+    specialties: [] as string[],
+    showMissingBenchmarks: false
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   // Load review data from localStorage
   const loadReviewData = (): { [key: string]: ReviewData } => {
@@ -382,14 +393,39 @@ const Dashboard: React.FC = () => {
   ];
 
   const filteredProviderMetrics = providerMetrics.filter(provider => {
+    // Text search filter
     const matchesSearch = provider.name.toLowerCase().includes(searchText.toLowerCase()) ||
                          provider.specialty.toLowerCase().includes(searchText.toLowerCase());
     
-    if (showMissingBenchmarksOnly) {
-      return matchesSearch && !provider.has_benchmarks;
-    }
-    return matchesSearch;
+    // TCC percentile range filter
+    const matchesTccRange = provider.tcc_percentile >= filters.tccRange[0] && 
+                           provider.tcc_percentile <= filters.tccRange[1];
+
+    // wRVU percentile range filter
+    const matchesWrvuRange = provider.wrvu_percentile >= filters.wrvuRange[0] && 
+                            provider.wrvu_percentile <= filters.wrvuRange[1];
+
+    // Risk level filter
+    const matchesRiskLevel = filters.riskLevels.length === 0 || 
+                            filters.riskLevels.includes(provider.risk_level);
+
+    // Status filter
+    const matchesStatus = filters.statuses.length === 0 || 
+                         filters.statuses.includes(provider.status);
+
+    // Specialty filter
+    const matchesSpecialty = filters.specialties.length === 0 ||
+                            filters.specialties.includes(provider.specialty);
+
+    // Missing benchmarks filter
+    const matchesMissingBenchmarks = !filters.showMissingBenchmarks || !provider.has_benchmarks;
+
+    return matchesSearch && matchesTccRange && matchesWrvuRange && 
+           matchesRiskLevel && matchesStatus && matchesSpecialty && matchesMissingBenchmarks;
   });
+
+  // Get unique specialties for the filter dropdown
+  const uniqueSpecialties = [...new Set(providerMetrics.map(p => p.specialty))].sort();
 
   return (
     <div className="px-12 py-6">
@@ -454,11 +490,18 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="flex gap-4 items-center">
               <Button 
-                icon={<WarningOutlined />}
-                onClick={() => setShowMissingBenchmarksOnly(!showMissingBenchmarksOnly)}
-                className={showMissingBenchmarksOnly ? 'border-blue-500 text-blue-500' : ''}
+                icon={<FilterOutlined />}
+                onClick={() => setShowFilters(!showFilters)}
+                className={showFilters ? 'border-blue-500 text-blue-500' : ''}
               >
-                Show Missing Benchmarks Only ({metrics.missingBenchmarksCount})
+                Filters {(filters.specialties.length > 0 || 
+                         filters.riskLevels.length > 0 || 
+                         filters.statuses.length > 0 ||
+                         filters.showMissingBenchmarks ||
+                         filters.tccRange[0] !== 0 ||
+                         filters.tccRange[1] !== 100 ||
+                         filters.wrvuRange[0] !== 0 ||
+                         filters.wrvuRange[1] !== 100) ? '(Active)' : ''}
               </Button>
               <Input
                 placeholder="Search providers or specialties..."
@@ -470,6 +513,99 @@ const Dashboard: React.FC = () => {
               />
             </div>
           </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+              <Space direction="vertical" className="w-full" size="middle">
+                <div>
+                  <div className="text-sm font-medium mb-2">TCC Percentile Range</div>
+                  <Slider
+                    range
+                    value={filters.tccRange}
+                    onChange={value => setFilters(prev => ({ ...prev, tccRange: value }))}
+                    marks={{ 0: '0%', 25: '25%', 50: '50%', 75: '75%', 100: '100%' }}
+                  />
+                </div>
+                <div>
+                  <div className="text-sm font-medium mb-2">wRVU Percentile Range</div>
+                  <Slider
+                    range
+                    value={filters.wrvuRange}
+                    onChange={value => setFilters(prev => ({ ...prev, wrvuRange: value }))}
+                    marks={{ 0: '0%', 25: '25%', 50: '50%', 75: '75%', 100: '100%' }}
+                  />
+                </div>
+                <Space wrap>
+                  <div>
+                    <div className="text-sm font-medium mb-2">Specialty</div>
+                    <Select
+                      mode="multiple"
+                      placeholder="Select specialties"
+                      value={filters.specialties}
+                      onChange={value => setFilters(prev => ({ ...prev, specialties: value }))}
+                      style={{ width: 300 }}
+                      options={uniqueSpecialties.map(specialty => ({
+                        label: specialty,
+                        value: specialty
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium mb-2">Risk Level</div>
+                    <Select
+                      mode="multiple"
+                      placeholder="Select risk levels"
+                      value={filters.riskLevels}
+                      onChange={value => setFilters(prev => ({ ...prev, riskLevels: value }))}
+                      style={{ width: 200 }}
+                      options={[
+                        { label: 'Low', value: 'Low' },
+                        { label: 'Medium', value: 'Medium' },
+                        { label: 'High', value: 'High' }
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium mb-2">Status</div>
+                    <Select
+                      mode="multiple"
+                      placeholder="Select statuses"
+                      value={filters.statuses}
+                      onChange={value => setFilters(prev => ({ ...prev, statuses: value }))}
+                      style={{ width: 200 }}
+                      options={[
+                        { label: 'Pending', value: 'Pending' },
+                        { label: 'Approved', value: 'Approved' },
+                        { label: 'Rejected', value: 'Rejected' }
+                      ]}
+                    />
+                  </div>
+                </Space>
+                <div className="flex items-center gap-8">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={filters.showMissingBenchmarks}
+                      onChange={checked => setFilters(prev => ({ ...prev, showMissingBenchmarks: checked }))}
+                    />
+                    <span className="text-sm">Show Missing Benchmarks Only ({metrics.missingBenchmarksCount})</span>
+                  </div>
+                  <Button 
+                    onClick={() => setFilters({
+                      tccRange: [0, 100],
+                      wrvuRange: [0, 100],
+                      riskLevels: [],
+                      statuses: [],
+                      specialties: [],
+                      showMissingBenchmarks: false
+                    })}
+                  >
+                    Reset Filters
+                  </Button>
+                </div>
+              </Space>
+            </div>
+          )}
 
           <Table
             columns={columns}
