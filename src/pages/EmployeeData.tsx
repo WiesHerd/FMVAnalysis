@@ -336,50 +336,65 @@ const EmployeeData: React.FC = () => {
 
         <style>
           {`
-            .provider-table .ant-table {
-              border: 1px solid #e5e7eb !important;
-            }
-            
-            /* Regular column headers */
-            .provider-table .ant-table-thead > tr > th {
-              background-color: #f9fafb !important;
-              border-bottom: 1px solid #e5e7eb;
-              font-weight: 500;
+            .provider-data-table .ant-table {
+              border: 1px solid #d1d5db;
             }
 
-            /* Main section headers */
-            .provider-table .ant-table-thead > tr:first-child > th {
-              background-color: #f3f4f6 !important;
+            /* Remove all default vertical borders */
+            .provider-data-table .ant-table-cell {
+              border-right: none !important;
+              border-left: none !important;
+            }
+
+            /* Add vertical lines for group dividers */
+            .provider-data-table .ant-table-tbody > tr > td:nth-child(4),
+            .provider-data-table .ant-table-thead > tr > th:nth-child(4) {
+              border-right: 1px solid #d1d5db !important;
+            }
+
+            /* Group divider after Compensation */
+            .provider-data-table .ant-table-tbody > tr > td:nth-child(8),
+            .provider-data-table .ant-table-thead > tr > th:nth-child(8) {
+              border-right: 1px solid #d1d5db !important;
+            }
+
+            /* Keep the header styling */
+            .provider-data-table .ant-table-thead > tr > th {
+              background-color: #f9fafb !important;
               font-weight: 600;
-              border-bottom: 2px solid #e5e7eb;
-              text-align: center !important;
-              padding: 12px 16px;
               text-transform: uppercase;
               font-size: 13px;
               letter-spacing: 0.5px;
             }
 
-            /* Cell borders */
-            .provider-table .ant-table-cell {
-              border-color: #e5e7eb !important;
+            /* Bottom border for all cells */
+            .provider-data-table .ant-table-cell {
+              border-bottom: 1px solid #d1d5db !important;
             }
 
-            /* Section dividers - strong vertical lines */
-            .provider-table .ant-table-thead > tr > th:nth-child(4),
-            .provider-table .ant-table-thead > tr > th:nth-child(8),
-            .provider-table .ant-table-tbody > tr > td:nth-child(4),
-            .provider-table .ant-table-tbody > tr > td:nth-child(8) {
-              border-left: 2px solid #d1d5db !important;
+            /* Override Ant Design's default table cell borders */
+            .provider-data-table .ant-table-cell::before,
+            .provider-data-table .ant-table-cell::after {
+              display: none !important;
             }
 
-            /* Hover effect on rows */
-            .provider-table .ant-table-tbody > tr:hover > td {
-              background-color: #f9fafb !important;
+            /* Remove any remaining borders from Ant Design */
+            .provider-data-table .ant-table-container,
+            .provider-data-table .ant-table-header,
+            .provider-data-table .ant-table-body {
+              border: none !important;
             }
 
-            /* Even rows for better readability */
-            .provider-table .ant-table-tbody > tr:nth-child(even) > td {
-              background-color: #fafafa;
+            /* Explicitly remove borders between columns within groups */
+            .provider-data-table .ant-table-thead > tr:last-child > th,
+            .provider-data-table .ant-table-tbody > tr > td {
+              border-right: none !important;
+              border-left: none !important;
+            }
+
+            /* Override any Ant Design border styles */
+            .provider-data-table .ant-table-cell {
+              border-inline-end: none !important;
             }
           `}
         </style>
@@ -390,7 +405,7 @@ const EmployeeData: React.FC = () => {
           rowKey="employee_id"
           pagination={{ pageSize: 10 }}
           bordered
-          className="provider-table"
+          className="provider-data-table"
           scroll={{ x: 'max-content' }}
         />
       </div>

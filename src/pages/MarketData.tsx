@@ -357,7 +357,7 @@ const MarketData: React.FC = () => {
         <style>
           {`
             .market-data-table .ant-table {
-              border: 2px solid #d1d5db;
+              border: 1px solid #d1d5db;
             }
 
             /* Remove all default vertical borders */
@@ -369,19 +369,19 @@ const MarketData: React.FC = () => {
             /* Add vertical lines for group dividers */
             .market-data-table .ant-table-tbody > tr > td:nth-child(1),
             .market-data-table .ant-table-thead > tr > th:nth-child(1) {
-              border-right: 2px solid #d1d5db !important;
+              border-right: 1px solid #d1d5db !important;
             }
 
             /* Group divider after Total Cash Compensation */
             .market-data-table .ant-table-tbody > tr > td:nth-child(5),
             .market-data-table .ant-table-thead > tr > th:nth-child(4) {
-              border-right: 2px solid #d1d5db !important;
+              border-right: 1px solid #d1d5db !important;
             }
 
             /* Group divider after wRVUs */
             .market-data-table .ant-table-tbody > tr > td:nth-child(9),
             .market-data-table .ant-table-thead > tr > th:nth-child(8) {
-              border-right: 2px solid #d1d5db !important;
+              border-right: 1px solid #d1d5db !important;
             }
 
             /* Keep the header styling */
@@ -395,7 +395,7 @@ const MarketData: React.FC = () => {
 
             /* Bottom border for all cells */
             .market-data-table .ant-table-cell {
-              border-bottom: 2px solid #d1d5db !important;
+              border-bottom: 1px solid #d1d5db !important;
             }
 
             /* Override Ant Design's default table cell borders */
