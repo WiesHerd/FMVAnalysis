@@ -160,42 +160,16 @@ const MarketData: React.FC = () => {
 
   const columns: ColumnsType<MarketDataRow> = [
     {
-      title: 'Specialty',
-      dataIndex: 'specialty',
-      key: 'specialty',
-      sorter: (a, b) => a.specialty.localeCompare(b.specialty),
-      filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div className="p-2">
-          <Input
-            placeholder="Search specialty"
-            value={selectedKeys[0]}
-            onChange={e => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-            onPressEnter={() => confirm()}
-            className="mb-2 block"
-          />
-          <div className="flex justify-between">
-            <Button
-              type="primary"
-              onClick={() => confirm()}
-              size="small"
-              className="bg-blue-500"
-            >
-              Filter
-            </Button>
-            <Button
-              onClick={() => clearFilters?.()}
-              size="small"
-            >
-              Reset
-            </Button>
-          </div>
+      title: (
+        <div className="font-medium text-gray-900">
+          Specialty
         </div>
       ),
-      filterIcon: (filtered: boolean) => (
-        <SearchOutlined style={{ color: filtered ? '#1890ff' : undefined }} />
-      ),
-      onFilter: (value, record) =>
-        record.specialty.toLowerCase().includes(String(value).toLowerCase()),
+      dataIndex: 'specialty',
+      key: 'specialty',
+      width: 250,
+      fixed: 'left',
+      className: 'specialty-column',
     },
     {
       title: (
@@ -383,46 +357,70 @@ const MarketData: React.FC = () => {
         <style>
           {`
             .market-data-table .ant-table {
-              border: 1px solid #e5e7eb;
+              border: 2px solid #d1d5db;
             }
 
             /* Remove all default vertical borders */
             .market-data-table .ant-table-cell {
               border-right: none !important;
+              border-left: none !important;
             }
 
-            /* Add vertical lines after Specialty and after each major section */
-            .market-data-table .ant-table-thead > tr:first-child > th:nth-child(1),
-            .market-data-table .ant-table-tbody > tr > td:nth-child(1) {
+            /* Add vertical lines for group dividers */
+            .market-data-table .ant-table-tbody > tr > td:nth-child(1),
+            .market-data-table .ant-table-thead > tr > th:nth-child(1) {
               border-right: 2px solid #d1d5db !important;
             }
 
-            /* Add continuous vertical lines after Total Cash Compensation and wRVUs sections */
-            .market-data-table .ant-table-thead > tr:first-child > th:nth-child(2),
-            .market-data-table .ant-table-thead > tr:nth-child(2) > th:nth-child(4),
-            .market-data-table .ant-table-tbody > tr > td:nth-child(5) {
+            /* Group divider after Total Cash Compensation */
+            .market-data-table .ant-table-tbody > tr > td:nth-child(5),
+            .market-data-table .ant-table-thead > tr > th:nth-child(4) {
               border-right: 2px solid #d1d5db !important;
             }
 
-            .market-data-table .ant-table-thead > tr:first-child > th:nth-child(3),
-            .market-data-table .ant-table-thead > tr:nth-child(2) > th:nth-child(8),
-            .market-data-table .ant-table-tbody > tr > td:nth-child(9) {
-              border-right: 2px solid #d1d5db !important;
-            }
-
-            /* Ensure continuous vertical lines in the header */
-            .market-data-table .ant-table-thead > tr:nth-child(2) > th:nth-child(4),
-            .market-data-table .ant-table-thead > tr:nth-child(2) > th:nth-child(8) {
+            /* Group divider after wRVUs */
+            .market-data-table .ant-table-tbody > tr > td:nth-child(9),
+            .market-data-table .ant-table-thead > tr > th:nth-child(8) {
               border-right: 2px solid #d1d5db !important;
             }
 
             /* Keep the header styling */
-            .market-data-table .ant-table-thead > tr:first-child > th {
-              background-color: #f3f4f6;
+            .market-data-table .ant-table-thead > tr > th {
+              background-color: #f9fafb !important;
               font-weight: 600;
               text-transform: uppercase;
               font-size: 13px;
               letter-spacing: 0.5px;
+            }
+
+            /* Bottom border for all cells */
+            .market-data-table .ant-table-cell {
+              border-bottom: 2px solid #d1d5db !important;
+            }
+
+            /* Override Ant Design's default table cell borders */
+            .market-data-table .ant-table-cell::before,
+            .market-data-table .ant-table-cell::after {
+              display: none !important;
+            }
+
+            /* Remove any remaining borders from Ant Design */
+            .market-data-table .ant-table-container,
+            .market-data-table .ant-table-header,
+            .market-data-table .ant-table-body {
+              border: none !important;
+            }
+
+            /* Explicitly remove borders between percentile columns */
+            .market-data-table .ant-table-thead > tr:last-child > th,
+            .market-data-table .ant-table-tbody > tr > td {
+              border-right: none !important;
+              border-left: none !important;
+            }
+
+            /* Override any Ant Design border styles */
+            .market-data-table .ant-table-cell {
+              border-inline-end: none !important;
             }
           `}
         </style>
