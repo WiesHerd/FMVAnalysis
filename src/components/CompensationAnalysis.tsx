@@ -1,8 +1,11 @@
 import React, { useState, useMemo, useContext, useCallback, useEffect } from 'react';
-import { Card } from 'antd';
+import { Card, Typography, Space } from 'antd';
 import Modal from './Modal';
 import TrashIcon from './TrashIcon';
 import { calculatePercentile } from '../utils/calculations';
+import type { RiskLevel, RiskScore, RiskFactor, RiskFactorContext } from '../types/fmvRiskAnalysis';
+
+const { Title, Text } = Typography;
 
 // Helper functions
 const calculateMonthsSinceReview = (reviewDate: Date | null): number => {
@@ -22,55 +25,21 @@ interface Benchmark {
 
 interface RiskMetric {
   name: string;
-  score: number;
+  score: RiskScore;
   description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: RiskLevel;
   recommendations: string[];
 }
 
 interface RiskAnalysis {
   factors: RiskFactor[];
   totalScore: number;
-  overallRisk: 'low' | 'medium' | 'high';
+  overallRisk: RiskLevel;
   summary: string;
   overallScore: number;
   metrics: RiskMetric[];
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  contextualFactors: {
-    market: {
-      geographicRegion: string;
-      marketCompetition: 'low' | 'medium' | 'high';
-      recruitmentDifficulty: 'low' | 'medium' | 'high';
-      costOfLiving: number;
-    };
-    provider: {
-      yearsExperience: number;
-      specialCertifications: string[];
-      academicAppointment?: string;
-      uniqueSkills: string[];
-    };
-    practice: {
-      caseComplexity: 'low' | 'medium' | 'high';
-      qualityMetrics: {
-        score: number;
-        benchmark: number;
-      };
-      patientSatisfaction: {
-        score: number;
-        benchmark: number;
-      };
-      procedureMix: {
-        highComplexity: number;
-        lowComplexity: number;
-      };
-    };
-    program: {
-      leadershipRole?: string;
-      researchActive: boolean;
-      teachingResponsibilities: boolean;
-      strategicImportance: 'low' | 'medium' | 'high';
-    };
-  };
+  severity: RiskLevel;
+  contextualFactors: RiskFactorContext;
 }
 
 interface MarketData {
@@ -160,11 +129,11 @@ interface CompensationComponents {
 
 interface RiskFactor {
   category: string;
-  description: string;
   score: 0 | 1 | 2 | 3;
+  riskLevel: 'low' | 'medium' | 'high';
+  description: string;
   findings: string[];
   recommendations: string[];
-  riskLevel: 'low' | 'medium' | 'high';
 }
 
 interface RiskAnalysis {
@@ -342,501 +311,201 @@ interface RiskScoringConfig {
 const defaultRiskConfig: RiskScoringConfig = {
   categories: [
     {
-      id: 'compensation_level',
-      name: 'Clinical Compensation Risk',
-      description: 'Analysis of compensation components and productivity alignment',
+      id: 'compensation_structure',
+      name: 'Compensation Structure',
+      description: 'Assessment of compensation consistency with market value considering specialty, experience, location, and demand',
       thresholds: [
         { max: 50, points: 0, risk: 'low' },
         { max: 75, points: 1, risk: 'medium' },
         { max: 90, points: 2, risk: 'medium' },
         { max: 100, points: 3, risk: 'high' }
       ],
-      evaluator: (context: RiskFactorContext) => {
+      evaluator: (context: RiskFactorContext): RiskScore => {
         let score = 0;
         const tccPercentile = context.compensation?.tccPercentile || 0;
-        const wrvuPercentile = context.compensation?.wrvuPercentile || 0;
-        const components = context.compensation?.components || {};
-        const total = Object.values(components).reduce((sum: number, val: number) => sum + (val || 0), 0) || 1;
         
-        // 1. Base score based on compensation percentile
+        // Market alignment
         if (tccPercentile > 90) score += 2;
         else if (tccPercentile > 75) score += 1;
         
-        // 2. Productivity alignment
-        const productivityGap = tccPercentile - wrvuPercentile;
-        if (productivityGap > 25) score += 3;
-        else if (productivityGap > 15) score += 2;
-        else if (productivityGap > 10) score += 1;
+        // Geographic and specialty considerations
+        if (context.market?.costOfLiving > 125 && tccPercentile < 75) score += 1;
+        if (context.market?.specialtyDemand === 'high' && tccPercentile < 50) score += 1;
         
-        // 3. Compensation mix risk
-        const baseRatio = (components.baseTotal || 0) / total;
-        if (baseRatio > 0.9) score += 1;
+        // Experience and qualifications
+        if (context.provider?.yearsExperience > 10 && tccPercentile < 75) score += 1;
+        if (context.provider?.specialCertifications?.length > 0 && tccPercentile < 75) score += 1;
         
-        // 4. Quality metrics consideration
-        const qualityMetrics = context.practice?.qualityMetrics;
-        if (qualityMetrics?.score < qualityMetrics?.benchmark * 0.8) score += 1;
-        
-        // 5. Market position adjustment
-        if (context.market?.specialtyDemand === 'high' && tccPercentile > 75) score -= 1;
-        if (context.provider?.yearsExperience > 10 && tccPercentile > 75) score -= 1;
-        
-        return Math.min(score, 3); // Cap at 3 points
+        return Math.min(score, 3) as RiskScore;
       },
-      findings: (context: RiskFactorContext) => {
-        const tccPercentile = context.compensation?.tccPercentile || 0;
-        const wrvuPercentile = context.compensation?.wrvuPercentile || 0;
-        const productivityGap = tccPercentile - wrvuPercentile;
-        const components = context.compensation?.components || {};
-        const total = Object.values(components).reduce((sum: number, val: number) => sum + (val || 0), 0) || 1;
-        const baseRatio = (components.baseTotal || 0) / total;
-        
-        const findings = [
-          `Total compensation at ${tccPercentile.toFixed(1)}th percentile`,
-          `Clinical productivity at ${wrvuPercentile.toFixed(1)}th percentile`,
-          `Productivity gap: ${productivityGap.toFixed(1)} percentile points`,
-          `Base salary ratio: ${(baseRatio * 100).toFixed(1)}%`
-        ];
-
-        if (context.practice?.qualityMetrics?.score !== undefined) {
-          findings.push(`Quality metrics: ${((context.practice.qualityMetrics.score / context.practice.qualityMetrics.benchmark) * 100).toFixed(1)}% of benchmark`);
-        }
-
-        if (productivityGap > 15) {
-          findings.push('WARNING: Significant compensation-productivity misalignment');
-        }
-
-        if (baseRatio > 0.9) {
-          findings.push('NOTE: High guaranteed compensation ratio');
-        }
-
-        return findings;
-      },
-      recommendations: (score: number, context: RiskFactorContext) => {
+      findings: (context: RiskFactorContext) => [
+        `Total compensation at ${context.compensation?.tccPercentile}th percentile`,
+        `Geographic region: ${context.market?.geographicRegion}`,
+        `Specialty demand: ${context.market?.specialtyDemand}`,
+        `Years of experience: ${context.provider?.yearsExperience}`,
+        `Special certifications: ${context.provider?.specialCertifications?.join(', ') || 'None'}`
+      ],
+      recommendations: (score: RiskScore, context: RiskFactorContext) => {
         const recs = [];
-        const tccPercentile = context.compensation?.tccPercentile || 0;
-        const wrvuPercentile = context.compensation?.wrvuPercentile || 0;
-
         if (score >= 2) {
-          recs.push('Document specific factors justifying above-market compensation');
-          if (wrvuPercentile < tccPercentile - 15) {
-            recs.push('Review productivity expectations and establish improvement targets');
-            recs.push('Consider implementing a productivity-based compensation component');
-          }
+          recs.push('Review market data for specialty and geographic region');
+          recs.push('Document justification for compensation level based on experience and qualifications');
         }
-
-        if (tccPercentile > 90) {
-          recs.push('Ensure documentation of any unique skills, experience, or market conditions');
-          recs.push('Consider implementing quality metrics for performance monitoring');
-        }
-
         if (score <= 1) {
-          recs.push('Continue monitoring compensation-productivity alignment');
+          recs.push('Continue monitoring market alignment');
         }
-
         return recs;
       }
     },
     {
-      id: 'market_factors',
-      name: 'Market Factors Risk',
-      description: 'Analysis of market conditions and specialty demand',
+      id: 'regulatory_compliance',
+      name: 'Regulatory Compliance',
+      description: 'Ensuring adherence to federal regulations like the Stark Law and Anti-Kickback Statute',
       thresholds: [
         { max: 1, points: 0, risk: 'low' },
         { max: 2, points: 1, risk: 'medium' },
         { max: 3, points: 2, risk: 'medium' },
         { max: 4, points: 3, risk: 'high' }
       ],
-      evaluator: (context: RiskFactorContext) => {
+      evaluator: (context: RiskFactorContext): RiskScore => {
         let score = 0;
-        const demand = context.market?.specialtyDemand || 'medium';
-        const competition = context.market?.marketCompetition || 'medium';
-        const recruitment = context.market?.recruitmentDifficulty || 'medium';
-        const costOfLiving = context.market?.costOfLiving || 100;
         
-        // 1. Specialty demand impact
-        if (demand === 'high') score += 2;
-        else if (demand === 'medium') score += 1;
+        if (!context.compliance?.starkCompliance) score += 2;
+        if (!context.compliance?.aksPolicies) score += 2;
         
-        // 2. Market competition
-        if (competition === 'high') score += 1;
-        
-        // 3. Recruitment difficulty
-        if (recruitment === 'high') score += 1;
-        
-        // 4. Cost of living adjustment
-        if (costOfLiving > 150) score += 1;
-        else if (costOfLiving > 125) score += 0.5;
-        
-        // 5. Geographic considerations
-        if (context.market?.geographicRegion?.toLowerCase().includes('rural')) {
-          score += 1; // Rural areas often require higher compensation
+        if (context.compliance?.referralAnalysis?.hasReferralConnection && 
+            context.compliance?.referralAnalysis?.referralImpact !== 'none') {
+          score += 1;
         }
         
-        // 6. Risk reduction factors
-        if (context.provider?.specialCertifications?.length > 0) score -= 0.5;
-        if (context.provider?.uniqueSkills?.length > 0) score -= 0.5;
-        
-        return Math.min(Math.round(score), 3); // Round and cap at 3 points
+        return Math.min(score, 3) as RiskScore;
       },
       findings: (context: RiskFactorContext) => {
-        const findings = [
-          `Specialty demand: ${context.market?.specialtyDemand || 'Not specified'}`,
-          `Market competition: ${context.market?.marketCompetition || 'Not specified'}`,
-          `Geographic region: ${context.market?.geographicRegion || 'Not specified'}`,
-          `Recruitment difficulty: ${context.market?.recruitmentDifficulty || 'Not specified'}`,
-          `Cost of living index: ${context.market?.costOfLiving || 100}`
-        ];
-
-        if (context.provider?.specialCertifications?.length > 0) {
-          findings.push(`Special certifications: ${context.provider.specialCertifications.join(', ')}`);
+        const findings = [];
+        if (!context.compliance?.starkCompliance) {
+          findings.push('❌ Stark Law compliance documentation incomplete');
         }
-
+        if (!context.compliance?.aksPolicies) {
+          findings.push('❌ Anti-Kickback Statute policies not documented');
+        }
+        if (context.compliance?.referralAnalysis?.hasReferralConnection) {
+          findings.push(`⚠️ Referral relationship identified: ${context.compliance.referralAnalysis.referralImpact} impact`);
+        }
+        return findings;
+      },
+      recommendations: (score: RiskScore, context: RiskFactorContext) => {
+        const recs = [];
+        if (!context.compliance?.starkCompliance) {
+          recs.push('Complete Stark Law compliance documentation');
+        }
+        if (!context.compliance?.aksPolicies) {
+          recs.push('Implement Anti-Kickback Statute policies');
+        }
+        if (context.compliance?.referralAnalysis?.hasReferralConnection) {
+          recs.push('Document referral relationship analysis and safeguards');
+        }
+        return recs;
+      }
+    },
+    {
+      id: 'commercial_reasonableness',
+      name: 'Commercial Reasonableness',
+      description: 'Evaluating if the arrangement makes sense from a business perspective, independent of potential referrals',
+      thresholds: [
+        { max: 1, points: 0, risk: 'low' },
+        { max: 2, points: 1, risk: 'medium' },
+        { max: 3, points: 2, risk: 'medium' },
+        { max: 4, points: 3, risk: 'high' }
+      ],
+      evaluator: (context: RiskFactorContext): RiskScore => {
+        let score = 0;
+        
+        if (!context.businessCase?.needJustification) score += 1;
+        if (!context.businessCase?.strategicAlignment) score += 1;
+        
+        const roi = context.businessCase?.financialImpact?.roi || 0;
+        if (roi < 0) score += 2;
+        else if (roi < 1) score += 1;
+        
+        if (!context.documentation?.methodology) score += 1;
+        
+        return Math.min(score, 3) as RiskScore;
+      },
+      findings: (context: RiskFactorContext) => {
+        const findings = [];
+        findings.push(`Business need: ${context.businessCase?.needJustification || 'Not documented'}`);
+        findings.push(`Strategic alignment: ${context.businessCase?.strategicAlignment || 'Not documented'}`);
+        findings.push(`ROI: ${context.businessCase?.financialImpact?.roi || 0}`);
+        return findings;
+      },
+      recommendations: (score: RiskScore, context: RiskFactorContext) => {
+        const recs = [];
+        if (!context.businessCase?.needJustification) {
+          recs.push('Document business necessity for services');
+        }
+        if (!context.businessCase?.strategicAlignment) {
+          recs.push('Articulate strategic alignment of arrangement');
+        }
+        if (context.businessCase?.financialImpact?.roi < 1) {
+          recs.push('Review financial impact and justify arrangement');
+        }
+        return recs;
+      }
+    },
+    {
+      id: 'benchmarking_justification',
+      name: 'Benchmarking & Justification',
+      description: 'Examining how compensation compares to industry benchmarks and justifying any deviations',
+      thresholds: [
+        { max: 1, points: 0, risk: 'low' },
+        { max: 2, points: 1, risk: 'medium' },
+        { max: 3, points: 2, risk: 'medium' },
+        { max: 4, points: 3, risk: 'high' }
+      ],
+      evaluator: (context: RiskFactorContext): RiskScore => {
+        let score = 0;
+        const tccPercentile = context.compensation?.tccPercentile || 0;
+        
+        if (tccPercentile > 90) score += 2;
+        else if (tccPercentile > 75) score += 1;
+        
+        const hasJustification = context.provider?.uniqueSkills?.length > 0 ||
+                               context.provider?.specialCertifications?.length > 0 ||
+                               context.market?.specialtyDemand === 'high';
+                               
+        if (tccPercentile > 75 && !hasJustification) score += 1;
+        
+        return Math.min(score, 3) as RiskScore;
+      },
+      findings: (context: RiskFactorContext) => {
+        const findings = [];
+        findings.push(`Compensation percentile: ${context.compensation?.tccPercentile}th`);
         if (context.provider?.uniqueSkills?.length > 0) {
           findings.push(`Unique skills: ${context.provider.uniqueSkills.join(', ')}`);
         }
-
-        // Add market-specific insights
-        if (context.market?.specialtyDemand === 'high' && context.market?.marketCompetition === 'high') {
-          findings.push('NOTE: High-demand specialty in competitive market');
+        if (context.provider?.specialCertifications?.length > 0) {
+          findings.push(`Special certifications: ${context.provider.specialCertifications.join(', ')}`);
         }
-
-        if (context.market?.costOfLiving > 125) {
-          findings.push('NOTE: High cost of living market adjustment needed');
-        }
-
-        if (context.market?.geographicRegion?.toLowerCase().includes('rural')) {
-          findings.push('NOTE: Rural location compensation considerations');
-        }
-
+        findings.push(`Market demand: ${context.market?.specialtyDemand}`);
         return findings;
       },
-      recommendations: (score: number, context: RiskFactorContext) => {
+      recommendations: (score: RiskScore, context: RiskFactorContext) => {
         const recs = [];
-        
         if (score >= 2) {
-          recs.push('Document market conditions and recruitment challenges');
-          recs.push('Develop retention strategies beyond compensation');
-          
-          if (context.market?.costOfLiving > 125) {
-            recs.push('Consider cost of living adjustments in compensation structure');
-          }
-          
-          if (context.market?.specialtyDemand === 'high') {
-            recs.push('Implement market monitoring for compensation trends');
-            recs.push('Consider sign-on or retention bonuses');
-          }
+          recs.push('Document specific factors justifying above-benchmark compensation');
+          recs.push('Review and validate benchmark selection methodology');
         }
-
-        if (context.market?.geographicRegion?.toLowerCase().includes('rural')) {
-          recs.push('Consider rural practice incentives');
+        if (context.compensation?.tccPercentile > 75 && !context.provider?.uniqueSkills?.length) {
+          recs.push('Document unique qualifications or market conditions justifying compensation level');
         }
-
-        if (score <= 1) {
-          recs.push('Continue monitoring market conditions');
-        }
-
         return recs;
-      }
-    },
-    {
-      id: 'documentation',
-      name: 'Documentation Risk',
-      description: 'Analysis of FMV documentation completeness',
-      thresholds: [
-        { max: 1, points: 0, risk: 'low' },
-        { max: 2, points: 1, risk: 'medium' },
-        { max: 3, points: 2, risk: 'medium' },
-        { max: 4, points: 3, risk: 'high' }
-      ],
-      evaluator: (context: RiskFactorContext) => {
-        let score = 0;
-        const docs = context.documentation || {};
-        const compliance = context.compliance || {};
-        
-        // 1. FMV methodology documentation - Check for specific required elements
-        const methodologyElements = {
-          marketDataSources: docs.methodology?.includes('market data') || docs.methodology?.includes('survey data'),
-          compensationApproach: docs.methodology?.includes('compensation approach') || docs.methodology?.includes('compensation model'),
-          benchmarkSelection: docs.methodology?.includes('benchmark') || docs.methodology?.includes('percentile'),
-          productivityMetrics: docs.methodology?.includes('wRVU') || docs.methodology?.includes('productivity'),
-          specialtyConsiderations: docs.methodology?.includes('specialty') || docs.methodology?.includes('subspecialty'),
-          geographicAdjustments: docs.methodology?.includes('geographic') || docs.methodology?.includes('location'),
-          qualityMetrics: docs.methodology?.includes('quality') || docs.methodology?.includes('performance'),
-          callCoverage: docs.methodology?.includes('call coverage') || docs.methodology?.includes('on-call'),
-          adminDuties: docs.methodology?.includes('administrative') || docs.methodology?.includes('leadership'),
-          complianceConsiderations: docs.methodology?.includes('Stark') || docs.methodology?.includes('AKS')
-        };
-
-        const presentElements = Object.values(methodologyElements).filter(Boolean).length;
-        
-        if (!docs.methodology) {
-          score += 3; // Missing methodology entirely
-        } else {
-          if (presentElements <= 3) score += 2;
-          else if (presentElements <= 6) score += 1;
-          else if (presentElements <= 8) score += 0.5;
-        }
-        
-        // 2. Supporting documentation - Check for specific required documents
-        const requiredDocs = [
-          'market_survey_data',
-          'benchmark_analysis',
-          'productivity_data',
-          'compensation_model',
-          'compliance_checklist'
-        ];
-        
-        const presentDocs = (docs.supportingDocs?.filter(doc => 
-          requiredDocs.some(required => doc.toLowerCase().includes(required.replace('_', ' ')))
-        ) || []).length;
-        
-        if (presentDocs === 0) score += 2;
-        else if (presentDocs <= 2) score += 1;
-        else if (presentDocs <= 4) score += 0.5;
-        
-        // 3. Review date currency
-        const lastReviewDate = docs.lastReviewDate ? new Date(docs.lastReviewDate) : null;
-        const monthsSinceReview = calculateMonthsSinceReview(lastReviewDate);
-        
-        if (!lastReviewDate) score += 1;
-        else if (monthsSinceReview > 12) score += 1;
-        else if (monthsSinceReview > 6) score += 0.5;
-        
-        // 4. Compliance documentation
-        if (!compliance.starkCompliance) score += 1;
-        if (!compliance.aksPolicies) score += 1;
-        
-        // 5. Referral analysis documentation
-        if (compliance.referralAnalysis?.hasReferralConnection && 
-            compliance.referralAnalysis.referralImpact !== 'none') {
-          const referralDocs = [
-            docs.methodology?.includes('referral analysis'),
-            docs.methodology?.includes('volume analysis'),
-            docs.methodology?.includes('commercial reasonableness')
-          ].filter(Boolean).length;
-          
-          if (referralDocs === 0) score += 2;
-          else if (referralDocs === 1) score += 1;
-        }
-        
-        return Math.min(Math.round(score), 3);
-      },
-      findings: (context: RiskFactorContext) => {
-        const docs = context.documentation || {};
-        const compliance = context.compliance || {};
-        
-        // Analyze methodology components
-        const methodologyElements = {
-          'Market Data Sources': docs.methodology?.includes('market data') || docs.methodology?.includes('survey data'),
-          'Compensation Approach': docs.methodology?.includes('compensation approach') || docs.methodology?.includes('compensation model'),
-          'Benchmark Selection': docs.methodology?.includes('benchmark') || docs.methodology?.includes('percentile'),
-          'Productivity Metrics': docs.methodology?.includes('wRVU') || docs.methodology?.includes('productivity'),
-          'Specialty Considerations': docs.methodology?.includes('specialty') || docs.methodology?.includes('subspecialty'),
-          'Geographic Adjustments': docs.methodology?.includes('geographic') || docs.methodology?.includes('location'),
-          'Quality Metrics': docs.methodology?.includes('quality') || docs.methodology?.includes('performance'),
-          'Call Coverage': docs.methodology?.includes('call coverage') || docs.methodology?.includes('on-call'),
-          'Administrative Duties': docs.methodology?.includes('administrative') || docs.methodology?.includes('leadership'),
-          'Compliance Considerations': docs.methodology?.includes('Stark') || docs.methodology?.includes('AKS')
-        };
-
-        const findings = [];
-        
-        // Methodology completeness
-        const presentElements = Object.entries(methodologyElements)
-          .filter(([_, present]) => present)
-          .map(([name]) => name);
-        
-        findings.push(`FMV Methodology includes ${presentElements.length}/10 required elements:`);
-        presentElements.forEach(element => findings.push(`✓ ${element}`));
-        
-        Object.entries(methodologyElements)
-          .filter(([_, present]) => !present)
-          .forEach(([name]) => findings.push(`⚠ Missing: ${name}`));
-
-        // Supporting documentation
-        const requiredDocs = [
-          'Market Survey Data',
-          'Benchmark Analysis',
-          'Productivity Data',
-          'Compensation Model',
-          'Compliance Checklist'
-        ];
-        
-        const presentDocs = docs.supportingDocs?.map(doc => {
-          const matchedDoc = requiredDocs.find(required => 
-            doc.toLowerCase().includes(required.toLowerCase())
-          );
-          return matchedDoc || doc;
-        }) || [];
-        
-        findings.push(`\nSupporting Documentation: ${presentDocs.length}/${requiredDocs.length} required documents:`);
-        presentDocs.forEach(doc => findings.push(`✓ ${doc}`));
-        
-        requiredDocs
-          .filter(doc => !presentDocs.includes(doc))
-          .forEach(doc => findings.push(`��� Missing: ${doc}`));
-
-        // Review date
-        const lastReviewDate = docs.lastReviewDate ? new Date(docs.lastReviewDate) : null;
-        const monthsSinceReview = calculateMonthsSinceReview(lastReviewDate);
-        
-        findings.push(`\nLast Review: ${lastReviewDate ? 
-          `${Math.round(monthsSinceReview)} months ago (${monthsSinceReview <= 6 ? 'Current' : 
-            monthsSinceReview <= 12 ? 'Due for review' : 'Overdue'})` : 
-          'Not documented'}`);
-
-        // Compliance documentation
-        findings.push(`\nCompliance Documentation:`);
-        findings.push(`${compliance.starkCompliance ? '✓' : '⚠'} Stark Law Analysis`);
-        findings.push(`${compliance.aksPolicies ? '✓' : '⚠'} Anti-Kickback Statute Policies`);
-        
-        if (compliance.referralAnalysis?.hasReferralConnection) {
-          findings.push(`\nReferral Analysis: ${compliance.referralAnalysis.referralImpact}`);
-          if (docs.methodology?.includes('referral analysis')) {
-            findings.push('✓ Referral analysis documented');
-          } else {
-            findings.push('⚠ Missing referral analysis documentation');
-          }
-        }
-
-        return findings;
-      },
-      recommendations: (score: number, context: RiskFactorContext) => {
-        const recs = [];
-        const docs = context.documentation || {};
-        const compliance = context.compliance || {};
-        
-        // Missing methodology elements
-        const methodologyElements = {
-          'Market Data Sources': docs.methodology?.includes('market data') || docs.methodology?.includes('survey data'),
-          'Compensation Approach': docs.methodology?.includes('compensation approach') || docs.methodology?.includes('compensation model'),
-          'Benchmark Selection': docs.methodology?.includes('benchmark') || docs.methodology?.includes('percentile'),
-          'Productivity Metrics': docs.methodology?.includes('wRVU') || docs.methodology?.includes('productivity'),
-          'Specialty Considerations': docs.methodology?.includes('specialty') || docs.methodology?.includes('subspecialty'),
-          'Geographic Adjustments': docs.methodology?.includes('geographic') || docs.methodology?.includes('location'),
-          'Quality Metrics': docs.methodology?.includes('quality') || docs.methodology?.includes('performance'),
-          'Call Coverage': docs.methodology?.includes('call coverage') || docs.methodology?.includes('on-call'),
-          'Administrative Duties': docs.methodology?.includes('administrative') || docs.methodology?.includes('leadership'),
-          'Compliance Considerations': docs.methodology?.includes('Stark') || docs.methodology?.includes('AKS')
-        };
-
-        const missingElements = Object.entries(methodologyElements)
-          .filter(([_, present]) => !present)
-          .map(([name]) => name);
-
-        if (missingElements.length > 0) {
-          recs.push('Document FMV methodology to include:');
-          missingElements.forEach(element => 
-            recs.push(`- ${element} analysis and considerations`)
-          );
-        }
-
-        // Missing supporting documents
-        const requiredDocs = [
-          'Market Survey Data',
-          'Benchmark Analysis',
-          'Productivity Data',
-          'Compensation Model',
-          'Compliance Checklist'
-        ];
-        
-        const missingDocs = requiredDocs.filter(doc => 
-          !docs.supportingDocs?.some(supportingDoc => 
-            supportingDoc.toLowerCase().includes(doc.toLowerCase())
-          )
-        );
-
-        if (missingDocs.length > 0) {
-          recs.push('\nObtain and document required supporting materials:');
-          missingDocs.forEach(doc => 
-            recs.push(`- ${doc}`)
-          );
-        }
-
-        // Review date
-        const lastReviewDate = docs.lastReviewDate ? new Date(docs.lastReviewDate) : null;
-        const monthsSinceReview = calculateMonthsSinceReview(lastReviewDate);
-
-        if (!lastReviewDate || monthsSinceReview > 12) {
-          recs.push('\nConduct and document comprehensive FMV review:');
-          recs.push('- Update all market data and benchmarks');
-          recs.push('- Review compensation model assumptions');
-          recs.push('- Validate compliance with current regulations');
-        } else if (monthsSinceReview > 6) {
-          recs.push('\nSchedule next FMV review within 3 months');
-        }
-
-        // Compliance documentation
-        if (!compliance.starkCompliance || !compliance.aksPolicies) {
-          recs.push('\nComplete compliance documentation:');
-          if (!compliance.starkCompliance) {
-            recs.push('- Document Stark Law analysis and compliance');
-          }
-          if (!compliance.aksPolicies) {
-            recs.push('- Document Anti-Kickback Statute safeguards');
-          }
-        }
-
-        // Referral analysis
-        if (compliance.referralAnalysis?.hasReferralConnection && 
-            compliance.referralAnalysis.referralImpact !== 'none' &&
-            !docs.methodology?.includes('referral analysis')) {
-          recs.push('\nDocument referral relationship analysis:');
-          recs.push('- Analyze referral patterns and volumes');
-          recs.push('- Document commercial reasonableness');
-          recs.push('- Implement referral monitoring process');
-        }
-
-        return recs;
-      }
-    },
-    {
-      id: 'structural',
-      name: 'Structural Risk',
-      description: 'Analysis of compensation structure and incentives',
-      thresholds: [
-        { max: 1, points: 0, risk: 'low' },
-        { max: 2, points: 1, risk: 'medium' },
-        { max: 3, points: 2, risk: 'medium' },
-        { max: 4, points: 3, risk: 'high' }
-      ],
-      evaluator: (context: RiskFactorContext) => {
-        let score = 0;
-        const components = context.compensation?.components || {};
-        const total = Object.values(components).reduce((sum: number, val: number) => sum + (val || 0), 0) || 1;
-        
-        // Calculate ratio of guaranteed compensation
-        const guaranteedRatio = (components.baseTotal || 0) / total;
-        
-        if (guaranteedRatio > 0.9) score = 3;
-        else if (guaranteedRatio > 0.75) score = 2;
-        else if (guaranteedRatio > 0.6) score = 1;
-        
-        return score;
-      },
-      findings: (context: RiskFactorContext) => {
-        const components = context.compensation?.components || {};
-        const total = Object.values(components).reduce((sum: number, val: number) => sum + (val || 0), 0) || 1;
-        return [
-          `Base salary ratio: ${(((components.baseTotal || 0) / total) * 100).toFixed(1)}%`,
-          `Productivity component ratio: ${(((components.productivityTotal || 0) / total) * 100).toFixed(1)}%`,
-          `Other components ratio: ${(((components.callTotal || 0) + (components.adminTotal || 0)) / total * 100).toFixed(1)}%`
-        ];
-      },
-      recommendations: (score: number, context: RiskFactorContext) => {
-        if (score <= 1) return [];
-        return [
-          'Consider increasing productivity-based compensation',
-          'Document justification for guaranteed compensation',
-          'Review compensation structure alignment with market practices'
-        ];
       }
     }
   ],
   riskLevels: [
-    { max: 3, risk: 'low' },
-    { max: 6, risk: 'medium' },
-    { max: 12, risk: 'high' }
+    { max: 3, risk: 'low' as const },
+    { max: 6, risk: 'medium' as const },
+    { max: 12, risk: 'high' as const }
   ]
 };
 

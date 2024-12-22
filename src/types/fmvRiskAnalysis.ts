@@ -1,120 +1,139 @@
 export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
-export type ComplianceStatus = 'compliant' | 'partial' | 'non-compliant' | 'needs-review';
+export type ComplianceStatus = 'compliant' | 'non-compliant' | 'pending';
+export type JustificationStatus = 'complete' | 'incomplete' | 'pending';
+export type PracticeType = 'academic' | 'private' | 'hospital-employed';
+export type GeographicSetting = 'urban' | 'suburban' | 'rural';
+export type RiskScore = 0 | 1 | 2 | 3;
+export type ReferralImpact = 'none' | 'low' | 'medium' | 'high';
 
-export interface FMVRiskFactor {
+export interface CompensationFactors {
+  totalCompensationPercentile: number;
+  experienceLevel: string;
+  benchmarkComparison: number;
+  justificationStatus: JustificationStatus;
+}
+
+export interface MarketFactors {
+  specialtyDemand: RiskLevel;
+  marketPosition: string;
+  specialtyFactors: string[];
+  geographicFactors: {
+    region: string;
+    setting: GeographicSetting;
+    costOfLiving: number;
+  };
+}
+
+export interface ComplianceFactors {
+  starkLaw: {
+    status: ComplianceStatus;
+    details: string;
+  };
+  antiKickback: {
+    status: ComplianceStatus;
+    details: string;
+  };
+}
+
+export interface DocumentationFactors {
+  businessCase: string[];
+  strategicAlignment: string[];
+  supportingDocuments: {
+    [key: string]: boolean;
+  };
+}
+
+export interface CompensationAnalysis {
+  factors: CompensationFactors;
+  findings: string[];
+  recommendations: string[];
+}
+
+export interface MarketAnalysis {
+  factors: MarketFactors;
+  findings: string[];
+  recommendations: string[];
+}
+
+export interface ComplianceAnalysis {
+  factors: ComplianceFactors;
+  findings: string[];
+  recommendations: string[];
+}
+
+export interface DocumentationAnalysis {
+  factors: DocumentationFactors;
+  score: RiskScore;
+  findings: string[];
+  recommendations: string[];
+}
+
+export interface ReviewEntry {
+  date: string;
+  reviewer: string;
+  changes: string[];
+  notes?: string;
+}
+
+export interface RiskFactor {
   category: string;
-  description: string;
-  score: number;
-  findings: string[];
-  recommendations: string[];
+  score: RiskScore;
   riskLevel: RiskLevel;
-  lastUpdated: string;
-  updatedBy: string;
-}
-
-export interface CompensationRiskAnalysis {
-  category: 'compensation';
-  factors: {
-    totalCompensationPercentile: number;
-    productivityPercentile: number;
-    productivityCompensationAlignment: number;
-    baseCompensationRatio: number;
-    callCoverageAlignment: number;
-    subspecialtyImpact: number;
-    geographicAdjustment: number;
-  };
-  benchmarkSources: {
-    name: string;
-    year: string;
-    percentile: number;
-  }[];
+  description: string;
   findings: string[];
   recommendations: string[];
 }
 
-export interface MarketRiskAnalysis {
-  category: 'market';
-  factors: {
+export interface RiskFactorContext {
+  compensation?: {
+    tccPercentile: number;
+    components: {
+      baseTotal?: number;
+      productivityTotal?: number;
+      callTotal?: number;
+      adminTotal?: number;
+    };
+  };
+  market?: {
     specialtyDemand: RiskLevel;
-    payorMix: number;
-    competitionLevel: RiskLevel;
-    physicianShortage: boolean;
-    geographicFactors: {
-      region: string;
-      setting: 'urban' | 'suburban' | 'rural';
-      costOfLiving: number;
-    };
-    practiceType: 'academic' | 'private' | 'hospital-employed';
+    geographicRegion: string;
+    costOfLiving: number;
   };
-  findings: string[];
-  recommendations: string[];
-}
-
-export interface DocumentationRiskAnalysis {
-  category: 'documentation';
-  factors: {
-    fmvElements: {
-      marketDataSources: boolean;
-      compensationApproach: boolean;
-      benchmarkSelection: boolean;
-      productivityMetrics: boolean;
-      specialtyConsiderations: boolean;
-      geographicAdjustments: boolean;
-      qualityMetrics: boolean;
-      callCoverage: boolean;
-      administrativeDuties: boolean;
-      complianceConsiderations: boolean;
-    };
-    supportingDocuments: {
-      marketSurveyData: boolean;
-      benchmarkAnalysis: boolean;
-      productivityData: boolean;
-      compensationModel: boolean;
-      complianceChecklist: boolean;
-    };
-    lastReviewDate: string;
+  provider?: {
+    yearsExperience: number;
+    specialCertifications?: string[];
+    uniqueSkills?: string[];
   };
-  findings: [string, string?, string?, string?, string?];
-  recommendations: [string, string?, string?, string?, string?];
-  score: number;
-}
-
-export interface ComplianceRiskAnalysis {
-  category: 'compliance';
-  factors: {
-    starkLaw: {
-      status: ComplianceStatus;
-      issues: string[];
-    };
-    antiKickback: {
-      status: ComplianceStatus;
-      issues: string[];
-    };
-    commercialReasonableness: {
-      status: ComplianceStatus;
-      issues: string[];
+  compliance?: {
+    starkCompliance: boolean;
+    aksPolicies: boolean;
+    referralAnalysis?: {
+      hasReferralConnection: boolean;
+      referralImpact: ReferralImpact;
     };
   };
-  findings: string[];
-  recommendations: string[];
+  documentation?: {
+    methodology?: string;
+    supportingDocs?: string[];
+    lastReviewDate?: string;
+  };
+  businessCase?: {
+    needJustification?: string;
+    strategicAlignment?: string;
+    financialImpact?: {
+      roi: number;
+    };
+  };
 }
 
 export interface FMVRiskAnalysis {
-  providerId: string;
-  providerName: string;
-  specialty: string;
   analysisDate: string;
   analyst: string;
   overallRisk: RiskLevel;
-  compensationAnalysis: CompensationRiskAnalysis;
-  marketAnalysis: MarketRiskAnalysis;
-  documentationAnalysis: DocumentationRiskAnalysis;
-  complianceAnalysis: ComplianceRiskAnalysis;
+  compensationAnalysis: CompensationAnalysis;
+  marketAnalysis: MarketAnalysis;
+  complianceAnalysis: ComplianceAnalysis;
+  documentationAnalysis: DocumentationAnalysis;
   summary: string;
-  reviewHistory: Array<{
-    date: string;
-    reviewer: string;
-    changes: string[];
-    notes: string;
-  }>;
+  reviewHistory: ReviewEntry[];
 } 

@@ -43,21 +43,23 @@ const FMVRiskAnalysisComponent: React.FC<FMVRiskAnalysisProps> = ({
 
         <Divider />
 
-        {/* Compensation Risk Section */}
+        {/* Compensation Structure Section */}
         <div className="mb-8">
-          <Title level={5}>Clinical Compensation Risk</Title>
+          <Title level={5}>Compensation Structure</Title>
+          <Text type="secondary" className="mb-4">Assessment of compensation consistency with market value considering specialty, experience, location, and demand</Text>
+          
           <Descriptions column={2} className="mb-4">
             <Descriptions.Item label="Total Compensation Percentile">
               {analysis.compensationAnalysis.factors.totalCompensationPercentile}th
             </Descriptions.Item>
-            <Descriptions.Item label="Productivity Percentile">
-              {analysis.compensationAnalysis.factors.productivityPercentile}th
+            <Descriptions.Item label="Geographic Region">
+              {analysis.marketAnalysis.factors.geographicFactors.region}
             </Descriptions.Item>
-            <Descriptions.Item label="Base Compensation Ratio">
-              {analysis.compensationAnalysis.factors.baseCompensationRatio}%
+            <Descriptions.Item label="Specialty Demand">
+              {analysis.marketAnalysis.factors.specialtyDemand}
             </Descriptions.Item>
-            <Descriptions.Item label="Call Coverage Alignment">
-              {analysis.compensationAnalysis.factors.callCoverageAlignment}%
+            <Descriptions.Item label="Experience Level">
+              {analysis.compensationAnalysis.factors.experienceLevel}
             </Descriptions.Item>
           </Descriptions>
 
@@ -71,57 +73,52 @@ const FMVRiskAnalysisComponent: React.FC<FMVRiskAnalysisProps> = ({
           </Space>
         </div>
 
-        {/* Market Factors Risk Section */}
+        {/* Regulatory Compliance Section */}
         <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <Title level={5}>Market Factors Risk</Title>
-            <Text strong className="text-green-600">0 Points</Text>
-          </div>
-          <Text type="secondary" className="mb-4">Analysis of market conditions and specialty demand</Text>
+          <Title level={5}>Regulatory Compliance</Title>
+          <Text type="secondary" className="mb-4">Ensuring adherence to federal regulations like the Stark Law and Anti-Kickback Statute</Text>
           
+          <Descriptions column={2} className="mb-4">
+            <Descriptions.Item label="Stark Law">
+              <Tag color={analysis.complianceAnalysis.factors.starkLaw.status === 'compliant' ? 'success' : 'error'}>
+                {analysis.complianceAnalysis.factors.starkLaw.status}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Anti-Kickback">
+              <Tag color={analysis.complianceAnalysis.factors.antiKickback.status === 'compliant' ? 'success' : 'error'}>
+                {analysis.complianceAnalysis.factors.antiKickback.status}
+              </Tag>
+            </Descriptions.Item>
+          </Descriptions>
+
           <Space direction="vertical" className="w-full">
             <Text strong>Findings:</Text>
             <ul className="list-disc pl-5">
-              <li>Specialty demand: {analysis.marketAnalysis.factors.specialtyDemand}</li>
-              <li>Competition level: {analysis.marketAnalysis.factors.competitionLevel}</li>
-              <li>Geographic region: {analysis.marketAnalysis.factors.geographicFactors.setting}</li>
-              <li>Recruitment difficulty: {analysis.marketAnalysis.factors.physicianShortage ? 'high' : 'normal'}</li>
-              <li>Practice type: {analysis.marketAnalysis.factors.practiceType}</li>
-            </ul>
-
-            <Text strong className="mt-4">Recommendations:</Text>
-            <ul className="list-disc pl-5">
-              <li>Continue monitoring market conditions</li>
+              {analysis.complianceAnalysis.findings.map((finding, index) => (
+                <li key={index}>{finding}</li>
+              ))}
             </ul>
           </Space>
         </div>
 
-        {/* Documentation Risk Section */}
+        {/* Commercial Reasonableness Section */}
         <div className="mb-8">
-          <Title level={5}>Documentation Risk ({analysis.documentationAnalysis.score} Points)</Title>
+          <Title level={5}>Commercial Reasonableness</Title>
+          <Text type="secondary" className="mb-4">Evaluating if the arrangement makes sense from a business perspective, independent of potential referrals</Text>
+          
           <Space direction="vertical" className="w-full mb-4">
-            <Text strong>Missing FMV Elements:</Text>
+            <Text strong>Business Case Assessment:</Text>
             <ul className="list-disc pl-5">
-              {Object.entries(analysis.documentationAnalysis.factors.fmvElements)
-                .filter(([_, present]) => !present)
-                .slice(0, 5)
-                .map(([key]) => (
-                  <li key={key} className="text-amber-500">
-                    <span>⚠️ Missing: {key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  </li>
-                ))}
+              {analysis.documentationAnalysis.factors.businessCase.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
             </ul>
             
-            <Text strong className="mt-4">Missing Supporting Documents:</Text>
+            <Text strong className="mt-4">Strategic Alignment:</Text>
             <ul className="list-disc pl-5">
-              {Object.entries(analysis.documentationAnalysis.factors.supportingDocuments)
-                .filter(([_, present]) => !present)
-                .slice(0, 5)
-                .map(([key]) => (
-                  <li key={key} className="text-amber-500">
-                    <span>⚠️ Missing: {key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  </li>
-                ))}
+              {analysis.documentationAnalysis.factors.strategicAlignment.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
             </ul>
           </Space>
 
@@ -139,23 +136,24 @@ const FMVRiskAnalysisComponent: React.FC<FMVRiskAnalysisProps> = ({
           )}
         </div>
 
-        {/* Compliance Risk Section */}
+        {/* Benchmarking & Justification Section */}
         <div className="mb-8">
-          <Title level={5}>Compliance Risk</Title>
+          <Title level={5}>Benchmarking & Justification</Title>
+          <Text type="secondary" className="mb-4">Examining how compensation compares to industry benchmarks and justifying any deviations</Text>
+          
           <Descriptions column={2} className="mb-4">
-            <Descriptions.Item label="Stark Law">
-              <Tag color={analysis.complianceAnalysis.factors.starkLaw.status === 'compliant' ? 'success' : 'error'}>
-                {analysis.complianceAnalysis.factors.starkLaw.status}
-              </Tag>
+            <Descriptions.Item label="Compensation vs Benchmark">
+              {analysis.compensationAnalysis.factors.benchmarkComparison}%
             </Descriptions.Item>
-            <Descriptions.Item label="Anti-Kickback">
-              <Tag color={analysis.complianceAnalysis.factors.antiKickback.status === 'compliant' ? 'success' : 'error'}>
-                {analysis.complianceAnalysis.factors.antiKickback.status}
-              </Tag>
+            <Descriptions.Item label="Market Position">
+              {analysis.marketAnalysis.factors.marketPosition}
             </Descriptions.Item>
-            <Descriptions.Item label="Commercial Reasonableness">
-              <Tag color={analysis.complianceAnalysis.factors.commercialReasonableness.status === 'compliant' ? 'success' : 'error'}>
-                {analysis.complianceAnalysis.factors.commercialReasonableness.status}
+            <Descriptions.Item label="Specialty Factors">
+              {analysis.marketAnalysis.factors.specialtyFactors.join(', ')}
+            </Descriptions.Item>
+            <Descriptions.Item label="Justification Status">
+              <Tag color={analysis.compensationAnalysis.factors.justificationStatus === 'complete' ? 'success' : 'warning'}>
+                {analysis.compensationAnalysis.factors.justificationStatus}
               </Tag>
             </Descriptions.Item>
           </Descriptions>
@@ -163,7 +161,7 @@ const FMVRiskAnalysisComponent: React.FC<FMVRiskAnalysisProps> = ({
           <Space direction="vertical" className="w-full">
             <Text strong>Findings:</Text>
             <ul className="list-disc pl-5">
-              {analysis.complianceAnalysis.findings.map((finding, index) => (
+              {analysis.marketAnalysis.findings.map((finding, index) => (
                 <li key={index}>{finding}</li>
               ))}
             </ul>
