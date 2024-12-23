@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "vercel-build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "chmod +x ./node_modules/.bin/vite"
   },
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
