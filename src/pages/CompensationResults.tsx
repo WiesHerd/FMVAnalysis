@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Button } from 'antd';
-import { PrinterOutlined } from '@ant-design/icons';
 import ReviewForm from '../components/ReviewForm';
 import CompensationAnalysis from '../components/CompensationAnalysis';
 
@@ -177,10 +175,6 @@ const CompensationResults: React.FC = () => {
     window.location.reload();
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -198,25 +192,15 @@ const CompensationResults: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 print:bg-white print:py-0">
+    <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
-          <div className="flex justify-end mb-6 print:hidden">
-            <Button
-              icon={<PrinterOutlined />}
-              onClick={handlePrint}
-              className="flex items-center"
-            >
-              Print Analysis
-            </Button>
-          </div>
-
-          <div className="space-y-6 print:space-y-4">
-            <div className="print:mb-8 avoid-break">
+          <div className="space-y-6">
+            <div>
               <CompensationAnalysis compensation={analysisData} benchmarks={marketData} onUpdate={() => {}} />
             </div>
 
-            <div className="page-break-before avoid-break">
+            <div>
               <ReviewForm
                 providerId={providerId}
                 providerName={providerName}

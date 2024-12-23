@@ -280,25 +280,6 @@
   min-width: 120px;
 }
 
-@media print {
-  .screen-only {
-    display: none;
-  }
-
-  .print-only {
-    display: block;
-  }
-
-  .employee-data-table {
-    font-size: 10pt;
-  }
-
-  .employee-data-table th,
-  .employee-data-table td {
-    padding: 4px;
-  }
-}
-
 @media screen {
   .print-only {
     display: none;

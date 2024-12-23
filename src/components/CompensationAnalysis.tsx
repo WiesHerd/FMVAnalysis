@@ -3,7 +3,7 @@ import { Card, Typography, Space } from 'antd';
 import Modal from './Modal';
 import TrashIcon from './TrashIcon';
 import { calculatePercentile } from '../utils/calculations';
-import type { RiskLevel, RiskScore, RiskFactor, RiskFactorContext } from '../types/fmvRiskAnalysis';
+import type { RiskLevel, RiskScore, RiskFactor, RiskFactorContext, ReferralImpact } from '../types/fmvRiskAnalysis';
 
 const { Title, Text } = Typography;
 
@@ -129,8 +129,8 @@ interface CompensationComponents {
 
 interface RiskFactor {
   category: string;
-  score: 0 | 1 | 2 | 3;
-  riskLevel: 'low' | 'medium' | 'high';
+  score: RiskScore;
+  riskLevel: RiskLevel;
   description: string;
   findings: string[];
   recommendations: string[];
@@ -139,46 +139,12 @@ interface RiskFactor {
 interface RiskAnalysis {
   factors: RiskFactor[];
   totalScore: number;
-  overallRisk: 'low' | 'medium' | 'high';
+  overallRisk: RiskLevel;
   summary: string;
   overallScore: number;
   metrics: RiskMetric[];
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  contextualFactors: {
-    market: {
-      geographicRegion: string;
-      marketCompetition: 'low' | 'medium' | 'high';
-      recruitmentDifficulty: 'low' | 'medium' | 'high';
-      costOfLiving: number;
-    };
-    provider: {
-      yearsExperience: number;
-      specialCertifications: string[];
-      academicAppointment?: string;
-      uniqueSkills: string[];
-    };
-    practice: {
-      caseComplexity: 'low' | 'medium' | 'high';
-      qualityMetrics: {
-        score: number;
-        benchmark: number;
-      };
-      patientSatisfaction: {
-        score: number;
-        benchmark: number;
-      };
-      procedureMix: {
-        highComplexity: number;
-        lowComplexity: number;
-      };
-    };
-    program: {
-      leadershipRole?: string;
-      researchActive: boolean;
-      teachingResponsibilities: boolean;
-      strategicImportance: 'low' | 'medium' | 'high';
-    };
-  };
+  severity: RiskLevel;
+  contextualFactors: RiskFactorContext;
 }
 
 // Add new interfaces for risk scoring
@@ -187,7 +153,7 @@ interface RiskScoreRule {
   name: string;
   description: string;
   condition: string;
-  score: number;
+  score: RiskScore;
   isEnabled: boolean;
 }
 
@@ -1111,7 +1077,7 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
   });
 
   return (
-    <div className="space-y-8 print:space-y-6 font-inter">
+    <div className="space-y-8 font-inter">
       {/* Enterprise Dashboard Header */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
         <div className="relative max-w-3xl mx-auto">
@@ -1166,7 +1132,6 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
       <Card title="Compensation Components" className="print:page-break-inside-avoid">
         <div className="space-y-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-light text-gray-900">Compensation Components</h2>
             <button
               onClick={() => setIsEditingComponents(!isEditingComponents)}
               className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-500 rounded-md border border-blue-200 hover:border-blue-300 transition-colors print:hidden"
@@ -1175,31 +1140,32 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-4">
+          {/* First row - Base Salary, WRVU Incentive, Quality Payments */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Base Salary */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="bg-white rounded-lg border border-gray-200 p-3 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Base Salary</h3>
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Base Salary</h3>
                   {isEditingComponents ? (
-                    <div className="mt-2 relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div className="mt-0.5 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                         <span className="text-gray-500 sm:text-sm">$</span>
                       </div>
                       <input
                         type="text"
                         value={components.baseTotal.toLocaleString()}
                         onChange={(e) => handleComponentChange('baseTotal', e.target.value)}
-                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 pr-4 py-2 sm:text-sm border-gray-300 rounded-md font-inter"
+                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-6 pr-3 py-0.5 sm:text-sm border-gray-300 rounded-md font-inter"
                       />
                     </div>
                   ) : (
-                    <div className="mt-1 text-2xl font-light text-gray-900">${components.baseTotal.toLocaleString()}</div>
+                    <div className="mt-0.5 text-lg font-light text-gray-900">${components.baseTotal.toLocaleString()}</div>
                   )}
                 </div>
                 <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                   <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                   </svg>
                 </div>
               </div>
@@ -1209,26 +1175,55 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
             <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">wRVU Incentive</h3>
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">wRVU Incentive</h3>
                   {isEditingComponents ? (
-                    <div className="mt-2 relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                         <span className="text-gray-500 sm:text-sm">$</span>
                       </div>
                       <input
                         type="text"
                         value={components.productivityTotal.toLocaleString()}
                         onChange={(e) => handleComponentChange('productivityTotal', e.target.value)}
-                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 pr-4 py-2 sm:text-sm border-gray-300 rounded-md font-inter"
+                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-6 pr-3 py-1 sm:text-sm border-gray-300 rounded-md font-inter"
                       />
                     </div>
                   ) : (
-                    <div className="mt-1 text-2xl font-light text-gray-900">${components.productivityTotal.toLocaleString()}</div>
+                    <div className="mt-0.5 text-xl font-light text-gray-900">${components.productivityTotal.toLocaleString()}</div>
                   )}
                 </div>
                 <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
                   <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Quality */}
+            <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Quality</h3>
+                  {isEditingComponents ? (
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                        <span className="text-gray-500 sm:text-sm">$</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={components.qualityTotal.toLocaleString()}
+                        onChange={(e) => handleComponentChange('qualityTotal', e.target.value)}
+                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-6 pr-3 py-1 sm:text-sm border-gray-300 rounded-md font-inter"
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-0.5 text-xl font-light text-gray-900">${components.qualityTotal.toLocaleString()}</div>
+                  )}
+                </div>
+                <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                 </div>
               </div>
@@ -1238,25 +1233,25 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
             <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Call Coverage</h3>
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Call Coverage</h3>
                   {isEditingComponents ? (
-                    <div className="mt-2 relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                         <span className="text-gray-500 sm:text-sm">$</span>
                       </div>
                       <input
                         type="text"
                         value={components.callTotal.toLocaleString()}
                         onChange={(e) => handleComponentChange('callTotal', e.target.value)}
-                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 pr-4 py-2 sm:text-sm border-gray-300 rounded-md font-inter"
+                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-6 pr-3 py-1 sm:text-sm border-gray-300 rounded-md font-inter"
                       />
                     </div>
                   ) : (
-                    <div className="mt-1 text-2xl font-light text-gray-900">${components.callTotal.toLocaleString()}</div>
+                    <div className="mt-0.5 text-xl font-light text-gray-900">${components.callTotal.toLocaleString()}</div>
                   )}
                 </div>
-                <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                   </svg>
                 </div>
@@ -1267,21 +1262,21 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
             <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Administrative</h3>
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Administrative</h3>
                   {isEditingComponents ? (
-                    <div className="mt-2 relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                         <span className="text-gray-500 sm:text-sm">$</span>
                       </div>
                       <input
                         type="text"
                         value={components.adminTotal.toLocaleString()}
                         onChange={(e) => handleComponentChange('adminTotal', e.target.value)}
-                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 pr-4 py-2 sm:text-sm border-gray-300 rounded-md font-inter"
+                        className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-6 pr-3 py-1 sm:text-sm border-gray-300 rounded-md font-inter"
                       />
                     </div>
                   ) : (
-                    <div className="mt-1 text-2xl font-light text-gray-900">${components.adminTotal.toLocaleString()}</div>
+                    <div className="mt-0.5 text-xl font-light text-gray-900">${components.adminTotal.toLocaleString()}</div>
                   )}
                 </div>
                 <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
@@ -1291,14 +1286,21 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Total Compensation */}
-          <div className="mt-8 border-t pt-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">Total Compensation</h3>
-              <div className="text-3xl font-light text-gray-900">
-                ${Object.values(components).reduce((sum, val) => sum + val, 0).toLocaleString()}
+            {/* TCC (Total Cash Compensation) */}
+            <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Cash Compensation</h3>
+                  <div className="mt-0.5 text-xl font-light text-gray-900">
+                    ${Object.values(components).reduce((sum, val) => sum + val, 0).toLocaleString()}
+                  </div>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -1306,7 +1308,7 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
       </Card>
 
       {/* Market Position Analysis */}
-      <Card title="Market Analysis" className="print:page-break-inside-avoid">
+      <Card title="Market Analysis">
         <div className="space-y-8">
           {/* Market Position Visualization */}
           <div>
@@ -1316,36 +1318,36 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
               <div>
                 <div className="flex justify-between mb-3">
                   <span className="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Cash Compensation</span>
-                  <span className="text-sm font-medium text-blue-600 print:text-blue-800">
+                  <span className="text-sm font-medium text-blue-600">
                     {getPercentilePosition(compensation.total, 'tcc').toFixed(1)}th percentile
                   </span>
                 </div>
                 <div className="relative">
-                  <div className="overflow-hidden h-2 text-xs flex rounded bg-blue-100 print:bg-blue-50 print:border print:border-blue-200">
+                  <div className="overflow-hidden h-2 text-xs flex rounded bg-blue-100">
                     <div
                       style={{ width: `${getPercentilePosition(compensation.total, 'tcc')}%` }}
-                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 print:bg-blue-700"
+                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"
                     />
                   </div>
                   {/* Tick marks */}
                   <div className="absolute top-0 w-full">
                     <div className="relative h-2">
-                      <div style={{ left: '0%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '20%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '40%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '60%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '80%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '100%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
+                      <div style={{ left: '0%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '20%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '40%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '60%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '80%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '100%' }} className="absolute w-0.5 h-2 bg-gray-300" />
                     </div>
                   </div>
                   {/* Percentile labels */}
                   <div className="relative w-full mt-1">
-                    <div style={{ left: '0%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">0</div>
-                    <div style={{ left: '20%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">20th</div>
-                    <div style={{ left: '40%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">40th</div>
-                    <div style={{ left: '60%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">60th</div>
-                    <div style={{ left: '80%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">80th</div>
-                    <div style={{ left: '100%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">100th</div>
+                    <div style={{ left: '0%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">0</div>
+                    <div style={{ left: '20%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">20th</div>
+                    <div style={{ left: '40%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">40th</div>
+                    <div style={{ left: '60%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">60th</div>
+                    <div style={{ left: '80%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">80th</div>
+                    <div style={{ left: '100%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">100th</div>
                   </div>
                 </div>
               </div>
@@ -1354,36 +1356,36 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
               <div>
                 <div className="flex justify-between mb-3">
                   <span className="text-sm font-medium text-gray-500 uppercase tracking-wider">Annual wRVUs</span>
-                  <span className="text-sm font-medium text-green-600 print:text-green-800">
+                  <span className="text-sm font-medium text-green-600">
                     {getPercentilePosition(compensation.wrvus, 'wrvus').toFixed(1)}th percentile
                   </span>
                 </div>
                 <div className="relative">
-                  <div className="overflow-hidden h-2 text-xs flex rounded bg-green-100 print:bg-green-50 print:border print:border-green-200">
+                  <div className="overflow-hidden h-2 text-xs flex rounded bg-green-100">
                     <div
                       style={{ width: `${getPercentilePosition(compensation.wrvus, 'wrvus')}%` }}
-                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500 print:bg-green-700"
+                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"
                     />
                   </div>
                   {/* Tick marks */}
                   <div className="absolute top-0 w-full">
                     <div className="relative h-2">
-                      <div style={{ left: '0%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '20%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '40%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '60%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '80%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '100%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
+                      <div style={{ left: '0%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '20%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '40%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '60%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '80%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '100%' }} className="absolute w-0.5 h-2 bg-gray-300" />
                     </div>
                   </div>
                   {/* Percentile labels */}
                   <div className="relative w-full mt-1">
-                    <div style={{ left: '0%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">0</div>
-                    <div style={{ left: '20%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">20th</div>
-                    <div style={{ left: '40%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">40th</div>
-                    <div style={{ left: '60%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">60th</div>
-                    <div style={{ left: '80%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">80th</div>
-                    <div style={{ left: '100%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">100th</div>
+                    <div style={{ left: '0%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">0</div>
+                    <div style={{ left: '20%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">20th</div>
+                    <div style={{ left: '40%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">40th</div>
+                    <div style={{ left: '60%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">60th</div>
+                    <div style={{ left: '80%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">80th</div>
+                    <div style={{ left: '100%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">100th</div>
                   </div>
                 </div>
               </div>
@@ -1392,36 +1394,36 @@ const CompensationAnalysisContent: React.FC<CompensationAnalysisProps> = ({
               <div>
                 <div className="flex justify-between mb-3">
                   <span className="text-sm font-medium text-gray-500 uppercase tracking-wider">Conversion Factor</span>
-                  <span className="text-sm font-medium text-purple-600 print:text-purple-800">
+                  <span className="text-sm font-medium text-purple-600">
                     {getPercentilePosition(compensation.perWrvu, 'conversionFactor').toFixed(1)}th percentile
                   </span>
                 </div>
                 <div className="relative">
-                  <div className="overflow-hidden h-2 text-xs flex rounded bg-purple-100 print:bg-purple-50 print:border print:border-purple-200">
+                  <div className="overflow-hidden h-2 text-xs flex rounded bg-purple-100">
                     <div
                       style={{ width: `${getPercentilePosition(compensation.perWrvu, 'conversionFactor')}%` }}
-                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-purple-500 print:bg-purple-700"
+                      className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-purple-500"
                     />
                   </div>
                   {/* Tick marks */}
                   <div className="absolute top-0 w-full">
                     <div className="relative h-2">
-                      <div style={{ left: '0%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '20%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '40%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '60%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '80%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
-                      <div style={{ left: '100%' }} className="absolute w-0.5 h-2 bg-gray-300 print:bg-gray-400" />
+                      <div style={{ left: '0%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '20%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '40%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '60%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '80%' }} className="absolute w-0.5 h-2 bg-gray-300" />
+                      <div style={{ left: '100%' }} className="absolute w-0.5 h-2 bg-gray-300" />
                     </div>
                   </div>
                   {/* Percentile labels */}
                   <div className="relative w-full mt-1">
-                    <div style={{ left: '0%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">0</div>
-                    <div style={{ left: '20%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">20th</div>
-                    <div style={{ left: '40%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">40th</div>
-                    <div style={{ left: '60%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">60th</div>
-                    <div style={{ left: '80%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">80th</div>
-                    <div style={{ left: '100%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400 print:text-gray-600">100th</div>
+                    <div style={{ left: '0%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">0</div>
+                    <div style={{ left: '20%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">20th</div>
+                    <div style={{ left: '40%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">40th</div>
+                    <div style={{ left: '60%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">60th</div>
+                    <div style={{ left: '80%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">80th</div>
+                    <div style={{ left: '100%' }} className="absolute transform -translate-x-1/2 text-xs text-gray-400">100th</div>
                   </div>
                 </div>
               </div>
@@ -1577,7 +1579,7 @@ const RiskFactorEditor: React.FC<RiskFactorEditorProps> = ({ context, onContextC
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-      <div className="relative top-20 mx-auto p-5 border w-4/5 shadow-lg rounded-md bg-white">
+      <div className="relative top-20 mx-auto p-5 border max-w-lg shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-900">{context.practice.qualityMetrics.type === 'objective' ? 'Objective' : context.practice.qualityMetrics.type === 'subjective' ? 'Subjective' : 'Mixed'} Quality Metrics</h3>
           <button onClick={() => onContextChange(context)} className="text-gray-400 hover:text-gray-500">
@@ -1590,35 +1592,27 @@ const RiskFactorEditor: React.FC<RiskFactorEditorProps> = ({ context, onContextC
 
         <div className="space-y-4">
           {/* Risk Score Selection */}
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Risk Assessment</h4>
-            <div className="space-y-4">
-              {riskOptions['Compensation Level Risk'].map((option) => (
+          <div className="border rounded-lg p-4">
+            <Title level={5}>Risk Assessment</Title>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              {options.map((option) => (
                 <div
                   key={option.score}
-                  className={`relative flex items-start p-4 cursor-pointer rounded-lg border ${
-                    selectedScore === option.score 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:bg-gray-100'
+                  className={`p-3 border rounded-lg cursor-pointer flex items-center ${
+                    selectedScore === option.score ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
                   }`}
                   onClick={() => setSelectedScore(option.score)}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-gray-900">
-                      {option.label}
-                    </div>
-                    <div className="mt-1 text-sm text-gray-500">
-                      {option.description}
-                    </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{option.label}</div>
+                    <div className="text-xs text-gray-500">{option.description}</div>
                   </div>
-                  <div className="ml-3 flex items-center h-5">
-                    <input
-                      type="radio"
-                      checked={selectedScore === option.score}
-                      onChange={() => setSelectedScore(option.score)}
-                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                    />
-                  </div>
+                  <input
+                    type="radio"
+                    checked={selectedScore === option.score}
+                    onChange={() => setSelectedScore(option.score)}
+                    className="ml-2"
+                  />
                 </div>
               ))}
             </div>
@@ -1693,7 +1687,7 @@ const RiskFactorEditor: React.FC<RiskFactorEditorProps> = ({ context, onContextC
               ))}
               <button
                 onClick={() => setEditedRecommendations([...editedRecommendations, ''])}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
               >
                 Add Recommendation
               </button>
@@ -1730,12 +1724,42 @@ const RiskAnalysisSection: React.FC<{
   onRuleChange: (ruleId: string, updates: Partial<RiskScoreRule>) => void;
   onAdjustmentAdd: (adjustment: RiskScoreAdjustment) => void;
 }> = ({ analysis, riskRules, setRiskRules, context, onContextUpdate, onRuleChange, onAdjustmentAdd }) => {
+   const [factors, setFactors] = useState<RiskFactor[]>([
+    {
+      category: 'Compensation Structure',
+      score: 0 as RiskScore,
+      riskLevel: 'low' as RiskLevel,
+      description: 'Assessment of compensation consistency with market value considering specialty, experience, location, and demand',
+      findings: [],
+      recommendations: []
+    },
+    {
+      category: 'Regulatory Compliance',
+      score: 0 as RiskScore,
+      riskLevel: 'low' as RiskLevel,
+      description: 'Ensuring adherence to federal regulations like the Stark Law and Anti-Kickback Statute',
+      findings: [],
+      recommendations: []
+    },
+    {
+      category: 'Commercial Reasonableness',
+      score: 0 as RiskScore,
+      riskLevel: 'low' as RiskLevel,
+      description: 'Evaluating if the arrangement makes sense from a business perspective, independent of potential referrals',
+      findings: [],
+      recommendations: []
+    },
+    {
+      category: 'Benchmarking & Justification',
+      score: 0 as RiskScore,
+      riskLevel: 'low' as RiskLevel,
+      description: 'Examining how compensation compares to industry benchmarks and justifying any deviations',
+      findings: [],
+      recommendations: []
+    }
+  ]);
+
   const [selectedFactor, setSelectedFactor] = useState<RiskFactor | null>(null);
-  const [factors, setFactors] = useState<RiskFactor[]>(analysis.factors.map(factor => ({
-    ...factor,
-    score: factor.score as 0 | 1 | 2 | 3,
-    riskLevel: factor.riskLevel as 'low' | 'medium' | 'high'
-  })));
   const [totalScore, setTotalScore] = useState(analysis.totalScore);
 
   // Calculate risk level based on total score
@@ -1752,17 +1776,15 @@ const RiskAnalysisSection: React.FC<{
     setTotalScore(newTotalScore);
   }, [factors]);
 
-  const handleFactorUpdate = (score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => {
-    if (!selectedFactor) return;
-    
+  const handleFactorUpdate = (factor: RiskFactor, updates: { score: RiskScore; findings: string[]; recommendations: string[] }) => {
     const updatedFactors = factors.map(f => 
-      f.category === selectedFactor.category 
-        ? { 
-            ...f, 
-            score,
-            findings,
-            recommendations,
-            riskLevel: score <= 1 ? 'low' : score <= 2 ? 'medium' : 'high'
+      f.category === factor.category
+        ? {
+            ...f,
+            ...updates,
+            riskLevel: updates.score === 0 ? ('low' as RiskLevel) : 
+                       updates.score === 1 ? ('medium' as RiskLevel) : 
+                       ('high' as RiskLevel)
           }
         : f
     );
@@ -1843,14 +1865,14 @@ const RiskAnalysisSection: React.FC<{
       {selectedFactor && (
         <RiskModal
           isOpen={true}
-          onClose={() => setSelectedFactor(null)}
           title={selectedFactor.category}
           description={selectedFactor.description}
           findings={selectedFactor.findings}
           recommendations={selectedFactor.recommendations}
           score={selectedFactor.score}
-          onUpdate={handleFactorUpdate}
-          riskOptions={riskOptions[selectedFactor.category]}
+          onUpdate={(updates) => handleFactorUpdate(selectedFactor, updates)}
+          onClose={() => setSelectedFactor(null)}
+          riskOptions={defaultRiskOptions}
         />
       )}
 
@@ -1897,99 +1919,99 @@ const RiskAnalysisSection: React.FC<{
 
 // Add RiskOption interface
 interface RiskOption {
+  score: RiskScore;
   label: string;
   description: string;
-  score: 0 | 1 | 2 | 3;
 }
 
 // Add riskOptions definition
 const riskOptions: Record<string, RiskOption[]> = {
   'Clinical Compensation Risk': [
     { 
-      label: 'Low Risk (0 points)', 
-      description: 'Compensation below 50th percentile with matching productivity',
-      score: 0 
+      score: 0, 
+      label: 'Low Risk', 
+      description: 'Compensation below 50th percentile with matching productivity'
     },
     { 
-      label: 'Low-Medium Risk (1 point)', 
-      description: '50th-75th percentile with supporting productivity',
-      score: 1 
+      score: 1, 
+      label: 'Medium-Low Risk', 
+      description: '50th-75th percentile with supporting productivity'
     },
     { 
-      label: 'Medium Risk (2 points)', 
-      description: '75th-90th percentile or misaligned productivity',
-      score: 2 
+      score: 2, 
+      label: 'Medium Risk', 
+      description: '75th-90th percentile or misaligned productivity'
     },
     { 
-      label: 'High Risk (3 points)', 
-      description: 'Above 90th percentile or significantly misaligned productivity',
-      score: 3 
+      score: 3, 
+      label: 'High Risk', 
+      description: 'Above 90th percentile or significantly misaligned productivity'
     }
   ],
   'Market Factors Risk': [
     {
-      label: 'Low Risk (0 points)',
-      description: 'Low demand specialty, low competition',
-      score: 0
+      score: 0,
+      label: 'Low Risk',
+      description: 'Low demand specialty, low competition'
     },
     {
-      label: 'Low-Medium Risk (1 point)',
-      description: 'Medium demand or moderate competition',
-      score: 1
+      score: 1,
+      label: 'Low-Medium Risk',
+      description: 'Medium demand or moderate competition'
     },
     {
-      label: 'Medium Risk (2 points)',
-      description: 'High demand or high competition',
-      score: 2
+      score: 2,
+      label: 'Medium Risk',
+      description: 'High demand or high competition'
     },
     {
-      label: 'High Risk (3 points)',
-      description: 'High demand with high competition',
-      score: 3
+      score: 3,
+      label: 'High Risk',
+      description: 'High demand with high competition'
     }
   ],
   'Documentation Risk': [
     {
-      label: 'Low Risk (0 points)',
-      description: 'Complete documentation with recent review',
-      score: 0
+      score: 0,
+      label: 'Low Risk',
+      description: 'Complete documentation with recent review'
     },
     {
-      label: 'Low-Medium Risk (1 point)',
-      description: 'Minor gaps in documentation',
-      score: 1
+      score: 1,
+      label: 'Low-Medium Risk',
+      description: 'Minor gaps in documentation'
     },
     {
-      label: 'Medium Risk (2 points)',
-      description: 'Significant documentation gaps',
-      score: 2
+      score: 2,
+      label: 'Medium Risk',
+      description: 'Significant documentation gaps'
     },
     {
-      label: 'High Risk (3 points)',
-      description: 'Major documentation deficiencies',
-      score: 3
+      score: 3,
+      label: 'High Risk',
+      description: 'Major documentation deficiencies'
     }
   ],
   'Structural Risk': [
     {
-      label: 'Low Risk (0 points)',
-      description: 'Balanced compensation structure with appropriate incentives',
-      score: 0
+      score: 0,
+      label: 'Low Risk',
+      description: 'Balanced compensation structure with appropriate incentives'
     },
     {
-      label: 'Low-Medium Risk (1 point)',
-      description: 'Mostly balanced with minor concerns',
-      score: 1
+      score: 1,
+      label: 'Low-Medium Risk',
+      description: 'Mostly balanced with minor concerns'
     },
     {
-      label: 'Medium Risk (2 points)',
-      description: 'Imbalanced structure or misaligned incentives',
-      score: 2
+      score: 2,
+      label: 'Medium Risk',
+      description: 'Imbalanced structure or misaligned incentives'
     },
     {
-      label: 'High Risk (3 points)',
-      description: 'Highly imbalanced or inappropriate structure',
-      score: 3
+      score: 3,
+      label: 'High Risk',
+      description: 'Highly imbalanced or inappropriate structure'
     }
   ]
 };
@@ -1998,83 +2020,99 @@ interface RiskModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  description: string;
-  findings: string[];
-  recommendations: string[];
-  score: 0 | 1 | 2 | 3;
-  onUpdate: (score: 0 | 1 | 2 | 3, findings: string[], recommendations: string[]) => void;
-  riskOptions: RiskOption[];
+  description?: string;
+  findings?: string[];
+  recommendations?: string[];
+  score?: RiskScore;
+  onUpdate: (data: { score: RiskScore; findings: string[]; recommendations: string[] }) => void;
+  riskOptions?: RiskOption[];
 }
+
+const defaultRiskOptions: RiskOption[] = [
+  {
+    score: 0,
+    label: 'Low Risk',
+    description: 'Minimal risk factors identified, well within normal ranges'
+  },
+  {
+    score: 1,
+    label: 'Medium-Low Risk',
+    description: 'Some minor risk factors, but generally acceptable'
+  },
+  {
+    score: 2,
+    label: 'Medium-High Risk',
+    description: 'Multiple risk factors requiring attention'
+  },
+  {
+    score: 3,
+    label: 'High Risk',
+    description: 'Significant risk factors requiring immediate attention'
+  }
+];
 
 const RiskModal: React.FC<RiskModalProps> = ({ 
   isOpen, 
   onClose, 
   title,
   description,
-  findings, 
-  recommendations, 
-  score,
+  findings = [], 
+  recommendations = [], 
+  score = 0,
   onUpdate,
-  riskOptions
+  riskOptions = defaultRiskOptions
 }) => {
-  const [selectedScore, setSelectedScore] = useState<0 | 1 | 2 | 3>(score);
+  const [selectedScore, setSelectedScore] = useState<RiskScore>(score);
   const [editedFindings, setEditedFindings] = useState<string[]>(findings);
   const [editedRecommendations, setEditedRecommendations] = useState<string[]>(recommendations);
+  const options = riskOptions || defaultRiskOptions;
 
   const handleSave = () => {
-    onUpdate(selectedScore, editedFindings, editedRecommendations);
+    onUpdate({
+      score: selectedScore,
+      findings: editedFindings,
+      recommendations: editedRecommendations
+    });
     onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-      <div className="relative top-20 mx-auto p-5 border w-4/5 shadow-lg rounded-md bg-white">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border max-w-lg shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-            <p className="text-sm text-gray-600">{description}</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-            <span className="sr-only">Close</span>
+          <Title level={4}>{title}</Title>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Risk Score Selection */}
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Risk Assessment</h4>
-            <div className="space-y-4">
-              {riskOptions.map((option) => (
+          <div className="border rounded-lg p-4">
+            <Title level={5}>Risk Assessment</Title>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              {options.map((option) => (
                 <div
                   key={option.score}
-                  className={`relative flex items-start p-4 cursor-pointer rounded-lg border ${
-                    selectedScore === option.score 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200 hover:bg-gray-100'
+                  className={`p-3 border rounded-lg cursor-pointer flex items-center ${
+                    selectedScore === option.score ? 'border-blue-500 bg-blue-50' : 'hover:bg-gray-50'
                   }`}
                   onClick={() => setSelectedScore(option.score)}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-gray-900">
-                      {option.label}
-                    </div>
-                    <div className="mt-1 text-sm text-gray-500">
-                      {option.description}
-                    </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{option.label}</div>
+                    <div className="text-xs text-gray-500">{option.description}</div>
                   </div>
-                  <div className="ml-3 flex items-center h-5">
-                    <input
-                      type="radio"
-                      checked={selectedScore === option.score}
-                      onChange={() => setSelectedScore(option.score)}
-                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                    />
-                  </div>
+                  <input
+                    type="radio"
+                    checked={selectedScore === option.score}
+                    onChange={() => setSelectedScore(option.score)}
+                    className="ml-2"
+                  />
                 </div>
               ))}
             </div>
@@ -2082,10 +2120,10 @@ const RiskModal: React.FC<RiskModalProps> = ({
 
           {/* Findings */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Findings</h4>
+            <Title level={5}>Findings</Title>
             <div className="space-y-2">
-              {editedFindings.map((finding, index) => (
-                <div key={index} className="flex items-center space-x-2">
+              {editedFindings.map((finding: string, index: number) => (
+                <div key={index} className="flex gap-2">
                   <input
                     type="text"
                     value={finding}
@@ -2094,11 +2132,11 @@ const RiskModal: React.FC<RiskModalProps> = ({
                       newFindings[index] = e.target.value;
                       setEditedFindings(newFindings);
                     }}
-                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="flex-1 rounded-md border-gray-300"
                   />
                   <button
                     onClick={() => {
-                      const newFindings = editedFindings.filter((_, i) => i !== index);
+                      const newFindings = editedFindings.filter((_: string, i: number) => i !== index);
                       setEditedFindings(newFindings);
                     }}
                     className="text-red-600 hover:text-red-700"
@@ -2111,7 +2149,7 @@ const RiskModal: React.FC<RiskModalProps> = ({
               ))}
               <button
                 onClick={() => setEditedFindings([...editedFindings, ''])}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
               >
                 Add Finding
               </button>
@@ -2120,24 +2158,24 @@ const RiskModal: React.FC<RiskModalProps> = ({
 
           {/* Recommendations */}
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-4">Recommendations</h4>
+            <Title level={5}>Recommendations</Title>
             <div className="space-y-2">
-              {editedRecommendations.map((recommendation, index) => (
-                <div key={index} className="flex items-center space-x-2">
+              {editedRecommendations.map((rec: string, index: number) => (
+                <div key={index} className="flex gap-2">
                   <input
                     type="text"
-                    value={recommendation}
+                    value={rec}
                     onChange={(e) => {
-                      const newRecommendations = [...editedRecommendations];
-                      newRecommendations[index] = e.target.value;
-                      setEditedRecommendations(newRecommendations);
+                      const newRecs = [...editedRecommendations];
+                      newRecs[index] = e.target.value;
+                      setEditedRecommendations(newRecs);
                     }}
-                    className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="flex-1 rounded-md border-gray-300"
                   />
                   <button
                     onClick={() => {
-                      const newRecommendations = editedRecommendations.filter((_, i) => i !== index);
-                      setEditedRecommendations(newRecommendations);
+                      const newRecs = editedRecommendations.filter((_: string, i: number) => i !== index);
+                      setEditedRecommendations(newRecs);
                     }}
                     className="text-red-600 hover:text-red-700"
                   >
@@ -2149,23 +2187,23 @@ const RiskModal: React.FC<RiskModalProps> = ({
               ))}
               <button
                 onClick={() => setEditedRecommendations([...editedRecommendations, ''])}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
               >
                 Add Recommendation
               </button>
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
             >
               Save Changes
             </button>
