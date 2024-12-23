@@ -3,14 +3,18 @@ import react from "@vitejs/plugin-react"
 
 export default defineConfig({
   plugins: [react()],
-  base: "/",
+  base: "./",
   build: {
     outDir: "dist",
     sourcemap: true,
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: undefined
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@ant-design/icons', 'antd', '@headlessui/react', '@heroicons/react'],
+          charts: ['recharts']
+        }
       }
     }
   },
