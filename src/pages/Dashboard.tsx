@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { UsergroupAddOutlined, AlertOutlined, CheckCircleOutlined, ClockCircleOutlined, SearchOutlined, WarningOutlined, FilterOutlined } from '@ant-design/icons';
 import '../styles/ProviderTable.css';
 import { formatCurrency, formatNumber } from '../utils/formatters';
+import Papa from 'papaparse';
 
 interface MarketData {
   specialty: string;
@@ -160,27 +161,93 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    // Load provider data from localStorage
-    const savedData = localStorage.getItem('employeeData');
-    if (savedData) {
+    const loadData = async () => {
       try {
-        const parsedData = JSON.parse(savedData);
-        setProviders(parsedData);
-      } catch (err) {
-        console.error('Error loading provider data:', err);
-      }
-    }
+        // First try to load provider data from CSV
+        const providerResponse = await fetch('/data/provider_data.csv');
+        const providerText = await providerResponse.text();
+        
+        Papa.parse(providerText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            const parsedProviders = results.data.map((row: any) => ({
+              employee_id: row.employee_id?.toString().trim() || '',
+              full_name: row.full_name?.toString().trim() || '',
+              specialty: row.specialty?.toString().trim() || '',
+              base_pay: parseFloat(row.base_pay) || 0,
+              wrvu_incentive: parseFloat(row.wrvu_incentive) || 0,
+              quality_payments: parseFloat(row.quality_payments) || 0,
+              admin_payments: parseFloat(row.admin_payments) || 0,
+              annual_wrvus: parseFloat(row.annual_wrvus) || 0,
+              conversion_factor: parseFloat(row.conversion_factor) || 0
+            }));
+            setProviders(parsedProviders);
+            localStorage.setItem('employeeData', JSON.stringify(parsedProviders));
+          }
+        });
 
-    // Load market data from localStorage
-    const savedMarketData = localStorage.getItem('marketData');
-    if (savedMarketData) {
-      try {
-        const parsedMarketData = JSON.parse(savedMarketData);
+        // Then try to load market data from CSV
+        const marketResponse = await fetch('/data/market_data.csv');
+        const marketText = await marketResponse.text();
+        
+        const rows = marketText.split('\n').filter(row => row.trim());
+        const dataRows = rows.slice(1); // Skip header row
+        const parsedMarketData = dataRows.map(row => {
+          const [specialty, ...values] = row.split(',').map(val => val.trim());
+          const numbers = values.map(val => {
+            const num = Number(val.replace(/[$,]/g, ''));
+            return isNaN(num) ? 0 : num;
+          });
+          const [total25, total50, total75, total90, wrvu25, wrvu50, wrvu75, wrvu90, cf25, cf50, cf75, cf90] = numbers;
+          
+          return {
+            specialty: specialty,
+            total_25th: total25,
+            total_50th: total50,
+            total_75th: total75,
+            total_90th: total90,
+            wrvus_25th: wrvu25,
+            wrvus_50th: wrvu50,
+            wrvus_75th: wrvu75,
+            wrvus_90th: wrvu90,
+            cf_25th: cf25,
+            cf_50th: cf50,
+            cf_75th: cf75,
+            cf_90th: cf90,
+          };
+        }).filter(row => row.specialty && row.specialty.toLowerCase() !== 'specialty');
+
         setMarketData(parsedMarketData);
-      } catch (err) {
-        console.error('Error loading market data:', err);
+        localStorage.setItem('marketData', JSON.stringify(parsedMarketData));
+
+      } catch (error) {
+        console.log('Error loading CSV files, trying localStorage:', error);
+        // Fall back to localStorage
+        const savedProviderData = localStorage.getItem('employeeData');
+        const savedMarketData = localStorage.getItem('marketData');
+
+        if (savedProviderData) {
+          try {
+            const parsedProviders = JSON.parse(savedProviderData);
+            setProviders(parsedProviders);
+          } catch (err) {
+            console.error('Error loading provider data from localStorage:', err);
+          }
+        }
+
+        if (savedMarketData) {
+          try {
+            const parsedMarketData = JSON.parse(savedMarketData);
+            setMarketData(parsedMarketData);
+          } catch (err) {
+            console.error('Error loading market data from localStorage:', err);
+          }
+        }
       }
-    }
+    };
+
+    loadData();
   }, []);
 
   useEffect(() => {

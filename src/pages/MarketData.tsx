@@ -29,20 +29,65 @@ const MarketData: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load data from localStorage when component mounts
+  // Load data from CSV file or localStorage when component mounts
   useEffect(() => {
-    console.log('Loading market data from storage');
-    const savedData = localStorage.getItem('marketData');
-    if (savedData) {
+    const loadData = async () => {
       try {
-        const parsedData = JSON.parse(savedData);
-        console.log('Found saved market data:', parsedData);
+        // First try to load from CSV file
+        const response = await fetch('/data/market_data.csv');
+        const text = await response.text();
+        
+        const rows = text.split('\n').filter(row => row.trim());
+        const dataRows = rows.slice(1); // Skip header row
+        const parsedData = dataRows.map(row => {
+          const [specialty, ...values] = row.split(',').map(val => val.trim());
+          const numbers = values.map(val => {
+            const num = Number(val.replace(/[$,]/g, ''));
+            return isNaN(num) ? 0 : num;
+          });
+          const [total25, total50, total75, total90, wrvu25, wrvu50, wrvu75, wrvu90, cf25, cf50, cf75, cf90] = numbers;
+          
+          return {
+            specialty: specialty,
+            total_25th: total25,
+            total_50th: total50,
+            total_75th: total75,
+            total_90th: total90,
+            wrvus_25th: wrvu25,
+            wrvus_50th: wrvu50,
+            wrvus_75th: wrvu75,
+            wrvus_90th: wrvu90,
+            cf_25th: cf25,
+            cf_50th: cf50,
+            cf_75th: cf75,
+            cf_90th: cf90,
+          };
+        }).filter(row => row.specialty && row.specialty.toLowerCase() !== 'specialty');
+
         setData(parsedData);
         setFilteredData(parsedData);
-      } catch (err) {
-        console.error('Error loading market data:', err);
+        localStorage.setItem('marketData', JSON.stringify(parsedData));
+        setUploadStatus('success');
+        setStatusMessage('Market data loaded successfully');
+      } catch (error) {
+        console.log('Error loading CSV, trying localStorage:', error);
+        // Fall back to localStorage
+        const savedData = localStorage.getItem('marketData');
+        if (savedData) {
+          try {
+            const parsedData = JSON.parse(savedData);
+            setData(parsedData);
+            setFilteredData(parsedData);
+            setUploadStatus('success');
+            setStatusMessage('Market data loaded from cache');
+          } catch (err) {
+            console.error('Error loading from localStorage:', err);
+          }
+        }
       }
-    }
+    };
+
+    loadData();
   }, []);
 
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {

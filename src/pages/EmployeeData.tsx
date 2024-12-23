@@ -27,15 +27,66 @@ const EmployeeData: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const savedData = localStorage.getItem('employeeData');
-    if (savedData) {
+    const loadData = async () => {
       try {
-        const parsedData = JSON.parse(savedData);
-        setEmployeeData(parsedData);
-      } catch (err) {
-        console.error('Error loading employee data from storage:', err);
+        // First try to load from CSV file
+        const response = await fetch('/data/provider_data.csv');
+        const text = await response.text();
+        
+        Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (header: string) => header.trim(),
+          complete: (results: ParseResult<any>) => {
+            try {
+              if (!results.data || results.data.length === 0) {
+                throw new Error('No data found in CSV');
+              }
+
+              const parsedData = results.data.map((row: any) => ({
+                employee_id: row.employee_id?.toString().trim() || '',
+                full_name: row.full_name?.toString().trim() || '',
+                specialty: row.specialty?.toString().trim() || '',
+                base_pay: parseFloat(row.base_pay) || 0,
+                wrvu_incentive: parseFloat(row.wrvu_incentive) || 0,
+                quality_payments: parseFloat(row.quality_payments) || 0,
+                admin_payments: parseFloat(row.admin_payments) || 0,
+                annual_wrvus: parseFloat(row.annual_wrvus) || 0,
+                conversion_factor: parseFloat(row.conversion_factor) || 0
+              }));
+
+              setEmployeeData(parsedData);
+              setFilteredData(parsedData);
+              localStorage.setItem('employeeData', JSON.stringify(parsedData));
+              setUploadStatus('success');
+              setStatusMessage('Provider data loaded successfully');
+            } catch (err) {
+              throw err;
+            }
+          },
+          error: (error: Error) => {
+            throw error;
+          }
+        });
+      } catch (error) {
+        console.log('Error loading CSV, trying localStorage:', error);
+        // Fall back to localStorage
+        const savedData = localStorage.getItem('employeeData');
+        if (savedData) {
+          try {
+            const parsedData = JSON.parse(savedData);
+            setEmployeeData(parsedData);
+            setFilteredData(parsedData);
+            setUploadStatus('success');
+            setStatusMessage('Provider data loaded from cache');
+          } catch (err) {
+            console.error('Error loading from localStorage:', err);
+          }
+        }
       }
-    }
+    };
+
+    loadData();
   }, []);
 
   const handleFileUpload = (file: File) => {
